@@ -228,7 +228,7 @@ main() {
     # Process each bundle
     local index=0
     for file in "${files[@]}"; do
-        ((index++))
+        index=$((index + 1))
 
         if [[ "$COUNT" -gt 0 ]] && [[ "$index" -gt "$COUNT" ]]; then
             break
