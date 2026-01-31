@@ -14,9 +14,8 @@ const patients = new Hono()
 // =============================================================================
 // GET /api/patients - list all patients
 // =============================================================================
-patients.get('/', (c) => {
-  // TODO: Replace with Aidbox FHIR query
-  const allPatients = getAllPatients()
+patients.get('/', async (c) => {
+  const allPatients = await getAllPatients()
   return c.json(allPatients, 200)
 })
 

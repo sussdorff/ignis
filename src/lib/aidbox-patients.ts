@@ -59,6 +59,17 @@ export async function findPatient(
 }
 
 /**
+ * Get all patients from Aidbox (FHIR search with no filters).
+ */
+export async function getAllPatients(): Promise<FHIRPatient[]> {
+  const bundle = (await fhirClient.get('Patient?_count=500')) as FHIRBundle
+  const entries = bundle.entry ?? []
+  return entries
+    .map((e) => e.resource)
+    .filter((r): r is FHIRPatient => r?.resourceType === 'Patient')
+}
+
+/**
  * Get a patient by ID via Aidbox FHIR read.
  * Returns null if not found (404).
  */
