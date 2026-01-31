@@ -67,6 +67,10 @@ runcmd:
   - git clone https://github.com/sussdorff/ignis.git /opt/ignis || true
   - chown -R hackathon:hackathon /opt/ignis
 
+  # Create SSL certificate directory
+  - mkdir -p /opt/ignis/infra/ssl
+  - chown hackathon:hackathon /opt/ignis/infra/ssl
+
   # Install beads CLI for hackathon user
   - su - hackathon -c "npm install -g beads-cli"
 
