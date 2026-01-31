@@ -1,28 +1,43 @@
 #!/bin/bash
 # load-synthea-data.sh - Load Synthea patient bundles into Aidbox
 #
-# Usage: ./load-synthea-data.sh [count]
-#   count: number of patients to load (default: all ~631)
+# Usage: ./load-synthea-data.sh [count] [--fresh]
+#   count:   number of patients to load (default: all ~631)
+#   --fresh: force re-download of data (ignore cache)
 #
 # Examples:
-#   ./load-synthea-data.sh        # Load all patients
-#   ./load-synthea-data.sh 50     # Load first 50 patients
-#   ./load-synthea-data.sh 10     # Load first 10 patients (quick test)
+#   ./load-synthea-data.sh           # Load all patients (uses cache)
+#   ./load-synthea-data.sh 50        # Load first 50 patients
+#   ./load-synthea-data.sh 10        # Load first 10 patients (quick test)
+#   ./load-synthea-data.sh --fresh   # Force re-download and load all
+#   ./load-synthea-data.sh 50 --fresh # Re-download and load 50 patients
 #
 # Environment variables:
-#   FHIR_BASE_URL - FHIR endpoint (default: http://localhost:8080/fhir)
-#   FHIR_USER     - Auth username (default: admin)
-#   FHIR_PASS     - Auth password (default: ignis2026)
+#   FHIR_BASE_URL    - FHIR endpoint (default: http://localhost:8080/fhir)
+#   FHIR_USER        - Auth username (default: admin)
+#   FHIR_PASS        - Auth password (default: ignis2026)
+#   SYNTHEA_CACHE_DIR - Cache directory (default: ~/.cache/synthea-data)
 
 set -euo pipefail
 
 # Configuration
-FHIR_BASE_URL="${FHIR_BASE_URL:-https://ignis.cognovis.de}"
+FHIR_BASE_URL="${FHIR_BASE_URL:-https://ignis.cognovis.de/fhir}"
 FHIR_USER="${FHIR_USER:-admin}"
 FHIR_PASS="${FHIR_PASS:-ignis2026}"
 REPO_URL="https://github.com/smart-on-fhir/generated-sample-data.git"
 DATA_PATH="R4/SYNTHEA"
-COUNT="${1:-0}"  # 0 means all
+CACHE_DIR="${SYNTHEA_CACHE_DIR:-$HOME/.cache/synthea-data}"
+
+# Parse arguments
+COUNT=0
+FRESH=false
+for arg in "$@"; do
+    if [[ "$arg" == "--fresh" ]]; then
+        FRESH=true
+    elif [[ "$arg" =~ ^[0-9]+$ ]]; then
+        COUNT="$arg"
+    fi
+done
 
 # Colors for output
 RED='\033[0;31m'
@@ -76,29 +91,59 @@ test_fhir_connection() {
     fi
 }
 
-# Clone repository with sparse checkout (only Synthea data)
+# Get or download Synthea data (with caching)
 # Sets DATA_DIR global variable with the path to Synthea data
-clone_synthea_data() {
-    log_info "Cloning Synthea data from GitHub (sparse checkout)..."
+get_synthea_data() {
+    local cached_data_dir="$CACHE_DIR/data"
+
+    # Check if cache exists and is valid
+    if [[ "$FRESH" == "false" ]] && [[ -d "$cached_data_dir" ]]; then
+        local file_count
+        file_count=$(ls -1 "$cached_data_dir"/*.json 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$file_count" -gt 0 ]]; then
+            log_success "Using cached data ($file_count patient bundles)"
+            log_info "Cache location: $cached_data_dir"
+            log_info "Use --fresh to force re-download"
+            DATA_DIR="$cached_data_dir"
+            return 0
+        fi
+    fi
+
+    # Remove old cache if --fresh or cache is invalid
+    if [[ -d "$CACHE_DIR" ]]; then
+        log_info "Clearing old cache..."
+        rm -rf "$CACHE_DIR"
+    fi
+
+    # Download fresh data
+    clone_synthea_data_to_cache
+}
+
+# Clone repository with sparse checkout (only Synthea data) into cache
+clone_synthea_data_to_cache() {
+    log_info "Downloading Synthea data from GitHub (sparse checkout)..."
     log_info "This may take a few minutes..."
 
     local orig_dir="$PWD"
 
-    cd "$TEMP_DIR" || {
-        log_error "Failed to cd to $TEMP_DIR"
+    # Create cache directory
+    mkdir -p "$CACHE_DIR"
+
+    cd "$CACHE_DIR" || {
+        log_error "Failed to cd to $CACHE_DIR"
         return 1
     }
 
     # Initialize sparse checkout (simplified output for SSH compatibility)
     log_info "[GIT] Cloning repository..."
-    git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" synthea-data 2>&1 || {
+    git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" repo 2>&1 || {
         log_error "Failed to clone repository"
         cd "$orig_dir"
         return 1
     }
 
-    cd synthea-data || {
-        log_error "Failed to cd to synthea-data"
+    cd repo || {
+        log_error "Failed to cd to repo"
         cd "$orig_dir"
         return 1
     }
@@ -110,20 +155,28 @@ clone_synthea_data() {
 
     # Checkout the files
     log_info "[GIT] Checking out files..."
-    git checkout 2>&1 || {
-        log_error "Failed to checkout files"
-        cd "$orig_dir"
-        return 1
-    }
-
-    # Count files
-    local file_count=$(ls -1 "$DATA_PATH"/*.json 2>/dev/null | wc -l | tr -d ' ')
-    log_success "Downloaded $file_count patient bundles"
-
-    # Set global variable instead of returning via stdout
-    DATA_DIR="$TEMP_DIR/synthea-data/$DATA_PATH"
+    git checkout 2>&1
 
     cd "$orig_dir"
+
+    # Check if files exist (checkout may report errors but still work)
+    if ! ls "$CACHE_DIR/repo/$DATA_PATH"/*.json >/dev/null 2>&1; then
+        log_error "Failed to checkout files - no JSON files found"
+        return 1
+    fi
+
+    # Move data to consistent cache location
+    mkdir -p "$CACHE_DIR/data"
+    mv "$CACHE_DIR/repo/$DATA_PATH"/*.json "$CACHE_DIR/data/"
+    rm -rf "$CACHE_DIR/repo"
+
+    DATA_DIR="$CACHE_DIR/data"
+
+    # Count files
+    local file_count
+    file_count=$(ls -1 "$DATA_DIR"/*.json 2>/dev/null | wc -l | tr -d ' ')
+    log_success "Downloaded and cached $file_count patient bundles"
+    log_info "Cache location: $DATA_DIR"
 }
 
 # Load a single bundle into FHIR server
@@ -148,9 +201,16 @@ load_bundle() {
     fi
 
     # Strip problematic fields that Aidbox schema doesn't recognize
-    # multipleBirthBoolean/multipleBirthInteger are valid FHIR but Aidbox rejects as "extra property"
+    # These are valid FHIR but Aidbox rejects as "extra property":
+    # - multipleBirthBoolean/multipleBirthInteger (Patient)
+    # - deceasedDateTime (Patient - for deceased patients)
+    # - serviceProvider (Encounter - organization references)
+    # - participant.individual (Encounter - practitioner references)
     local cleaned_file="$TEMP_DIR/cleaned.json"
-    jq 'walk(if type == "object" then del(.multipleBirthBoolean, .multipleBirthInteger) else . end)' \
+    jq 'walk(if type == "object" then
+        del(.multipleBirthBoolean, .multipleBirthInteger, .deceasedDateTime, .serviceProvider) |
+        if .participant then .participant |= map(del(.individual)) else . end
+      else . end)' \
         "$bundle_file" > "$cleaned_file"
 
     # POST bundle to FHIR server
@@ -198,8 +258,8 @@ main() {
 
     echo ""
 
-    # Clone repository (sets DATA_DIR global variable)
-    clone_synthea_data
+    # Get data (from cache or download fresh)
+    get_synthea_data
 
     if [[ ! -d "$DATA_DIR" ]]; then
         log_error "Data directory not found: $DATA_DIR"
@@ -208,7 +268,10 @@ main() {
 
     # Get list of JSON files (using ls for simplicity and SSH compatibility)
     log_info "Looking for files in $DATA_DIR..."
-    mapfile -t files < <(ls -1 "$DATA_DIR"/*.json 2>/dev/null | sort)
+    files=()
+    while IFS= read -r file; do
+        files+=("$file")
+    done < <(ls -1 "$DATA_DIR"/*.json 2>/dev/null | sort)
 
     TOTAL=${#files[@]}
     log_info "Found $TOTAL JSON files to process"
