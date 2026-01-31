@@ -7,6 +7,7 @@ import appointments from './routes/appointments'
 import queue from './routes/queue'
 import callback from './routes/callback'
 import twilio from './routes/twilio'
+import questionnaires from './routes/questionnaires'
 import { serveStatic } from 'hono/bun'
 import { handleTwilioWebSocket } from './lib/twilio-websocket'
 import type { ServerWebSocket } from 'bun'
@@ -48,6 +49,9 @@ app.route('/api/queue', queue)
 
 // Callback route (request_callback)
 app.route('/api/callback', callback)
+
+// Questionnaire routes (get questionnaires from FHIR store)
+app.route('/api/questionnaires', questionnaires)
 
 // Twilio routes (voice webhooks, call status, WebSocket streaming)
 app.route('/api/twilio', twilio)
