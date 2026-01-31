@@ -6,7 +6,8 @@
     "dev": "bun run --watch src/index.ts",
     "build": "bun build src/index.ts --outdir dist",
     "start": "bun run src/index.ts",
-    "build:frontend": "cd frontend && bun run build"
+    "build:frontend": "cd frontend && bun run build",
+    "test:routes": "bun run scripts/test-routes.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
