@@ -36,20 +36,16 @@ An AI voice agent that:
 
 ## Architecture
 
+**Hybrid approach:** ElevenLabs handles real-time voice conversation, OpenClaw manages background tasks and smart notifications.
+
 ```mermaid
 flowchart TB
     subgraph PatientInterface [Patient Interface]
-        Phone[Phone Call via 11Labs]
-        WebPortal[Patient Web Portal]
+        Phone[Phone Call]
+        WebPortal[Patient Portal]
     end
     
-    subgraph AILayer [AI Orchestration Layer]
-        OpenClaw[OpenClaw Agent]
-        Gemini[Gemini for NLU]
-        LangChain[LangChain Tools]
-    end
-    
-    subgraph VoiceLayer [Voice Layer]
+    subgraph VoiceLayer [Voice Layer - Real-time]
         ElevenLabs[11 Labs Conversational AI]
         Twilio[Twilio Phone Integration]
     end
@@ -59,36 +55,51 @@ flowchart TB
         Aidbox[Aidbox FHIR Server]
     end
     
+    subgraph Background [Background Orchestration]
+        OpenClaw[OpenClaw Agent]
+        Gemini[Gemini NLU]
+    end
+    
     subgraph ClinicInterface [Clinic Interface]
         Dashboard[Praxis Dashboard]
         Calendar[Appointment Calendar]
-        UrgentQueue[Urgent Queue]
+        StaffAlerts[Staff Alerts via WhatsApp]
     end
     
     Phone --> ElevenLabs
-    ElevenLabs --> OpenClaw
+    ElevenLabs -->|"Tools (real-time)"| NextAPI
+    ElevenLabs -->|"Post-call webhook"| OpenClaw
     WebPortal --> NextAPI
-    OpenClaw --> LangChain
-    OpenClaw --> Gemini
-    LangChain --> Aidbox
     NextAPI --> Aidbox
+    OpenClaw --> Gemini
+    OpenClaw --> Aidbox
+    OpenClaw -->|"Send verification SMS"| Phone
+    OpenClaw --> StaffAlerts
     Aidbox --> Dashboard
     Aidbox --> Calendar
-    OpenClaw --> UrgentQueue
 ```
+
+### Component Roles
+
+| Component | Role | When |
+|-----------|------|------|
+| **ElevenLabs** | Voice conversation, triage, patient lookup, booking | During call (real-time) |
+| **Next.js APIs** | HTTP endpoints for ElevenLabs tools, web UIs | During call + web access |
+| **Aidbox** | FHIR data storage (patients, appointments) | Always |
+| **OpenClaw** | SMS notifications, staff alerts, call analysis, follow-ups | After call (background) |
+| **Gemini** | Intent classification, confidence scoring | Called by OpenClaw |
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14 + Tailwind + shadcn/ui |
-| Backend | Next.js API Routes |
-| FHIR Server | Aidbox Cloud Sandbox |
-| Voice AI | 11 Labs Conversational AI |
-| Phone | Twilio (via 11 Labs) |
-| Agent | OpenClaw |
-| NLU | Gemini |
-| Orchestration | LangChain |
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | Next.js 14 + Tailwind + shadcn/ui | Praxis dashboard + Patient portal |
+| Backend | Next.js API Routes | Real-time APIs for ElevenLabs tools |
+| FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data storage |
+| Voice AI | 11 Labs Conversational AI | Phone conversation handling |
+| Phone | Twilio (via 11 Labs) | Inbound/outbound calls |
+| Background Agent | OpenClaw | Post-call tasks, notifications, follow-ups |
+| NLU | Gemini | Intent classification, confidence scoring |
 
 ## Quick Start
 

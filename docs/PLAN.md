@@ -25,20 +25,16 @@
 
 ## Architecture Overview
 
+**Hybrid Approach:** ElevenLabs handles real-time voice conversation during the call. OpenClaw manages background tasks after the call ends (SMS, notifications, analysis).
+
 ```mermaid
 flowchart TB
     subgraph PatientInterface [Patient Interface]
-        Phone[Phone Call via 11Labs]
-        WebPortal[Patient Web Portal]
+        Phone[Phone Call]
+        WebPortal[Patient Portal]
     end
     
-    subgraph AILayer [AI Orchestration Layer]
-        OpenClaw[OpenClaw Agent]
-        Gemini[Gemini for NLU]
-        LangChain[LangChain Tools]
-    end
-    
-    subgraph VoiceLayer [Voice Layer]
+    subgraph VoiceLayer [Voice Layer - Real-time]
         ElevenLabs[11 Labs Conversational AI]
         Twilio[Twilio Phone Integration]
     end
@@ -48,23 +44,53 @@ flowchart TB
         Aidbox[Aidbox FHIR Server]
     end
     
+    subgraph Background [Background Orchestration]
+        OpenClaw[OpenClaw Agent]
+        Gemini[Gemini NLU]
+    end
+    
     subgraph ClinicInterface [Clinic Interface]
         Dashboard[Praxis Dashboard]
         Calendar[Appointment Calendar]
-        UrgentQueue[Urgent Queue]
+        StaffAlerts[Staff Alerts via WhatsApp]
     end
     
     Phone --> ElevenLabs
-    ElevenLabs --> OpenClaw
+    ElevenLabs -->|"Tools (real-time)"| NextAPI
+    ElevenLabs -->|"Post-call webhook"| OpenClaw
     WebPortal --> NextAPI
-    OpenClaw --> LangChain
-    OpenClaw --> Gemini
-    LangChain --> Aidbox
     NextAPI --> Aidbox
+    OpenClaw --> Gemini
+    OpenClaw --> Aidbox
+    OpenClaw -->|"Send verification SMS"| Phone
+    OpenClaw --> StaffAlerts
     Aidbox --> Dashboard
     Aidbox --> Calendar
-    OpenClaw --> UrgentQueue
 ```
+
+### Component Responsibilities
+
+| Component | Responsibility | Timing |
+|-----------|----------------|--------|
+| **ElevenLabs** | Voice conversation, triage logic, patient lookup, appointment booking | Real-time (during call) |
+| **Next.js API Routes** | HTTP endpoints for ElevenLabs tools, serve web UIs | Real-time |
+| **Aidbox FHIR** | Store patients, appointments, practitioner schedules | Persistent storage |
+| **OpenClaw** | Send verification SMS, alert staff via WhatsApp, analyze calls, schedule follow-ups | Background (after call) |
+| **Gemini** | Intent classification, confidence scoring for AI flags | Called by OpenClaw |
+
+### Data Flow
+
+1. **During Call (Real-time path):**
+   - Patient calls → ElevenLabs answers
+   - ElevenLabs uses Tools to call Next.js APIs (patient lookup, book appointment)
+   - Next.js APIs read/write to Aidbox
+
+2. **After Call (Background path):**
+   - ElevenLabs sends post-call webhook to OpenClaw
+   - OpenClaw processes call transcript with Gemini (confidence scoring)
+   - OpenClaw sends verification SMS to patient
+   - OpenClaw alerts staff via WhatsApp if urgent
+   - OpenClaw updates Aidbox with AI flags
 
 ## Patient Call Flow (3-Tier Triage)
 
@@ -243,24 +269,33 @@ Given time constraints, focus on these **demo-ready** features:
 
 ### Person 1: Voice/AI Integration Lead
 
-**Focus:** 11 Labs + OpenClaw + Gemini
+**Focus:** 11 Labs (real-time voice) + OpenClaw (background tasks)
 
+**Real-time (ElevenLabs):**
 - Set up 11 Labs Conversational AI agent (German language primary)
 - Configure empathetic voice prompts and conversation flows
-- Implement 3-tier triage logic with German emergency keywords
+- Implement 3-tier triage logic in ElevenLabs system prompt
 - **Implement always-on emergency detection** - runs continuously, can interrupt at any point
 - **Implement human agent transfer** - emergency cases transfer to human, not direct 112 redirect
-- Integrate with Twilio for phone number (optional)
-- Connect OpenClaw for task orchestration
-- Use Gemini for intent classification (emergency vs urgent vs regular)
+- Configure ElevenLabs Tools to call Next.js APIs (patient lookup, appointment booking)
+- Integrate with Twilio for phone number
+
+**Background (OpenClaw):**
+- Set up OpenClaw on Hetzner server
+- Configure post-call webhook from ElevenLabs to OpenClaw
+- Implement verification SMS sending via OpenClaw
+- Set up staff alerts via WhatsApp/Telegram
+- Use Gemini for confidence scoring and AI flag generation
 
 **Key files to create:**
 
 - `lib/elevenlabs/agent-config.ts` - Voice agent configuration with German prompts
-- `lib/elevenlabs/conversation-flow.ts` - Intake conversation script
-- `lib/elevenlabs/emergency-detector.ts` - Always-on emergency keyword monitoring
-- `lib/openclaw/patient-intake-agent.ts` - Agent orchestration
-- `lib/ai/triage-classifier.ts` - Gemini-based 3-tier triage
+- `lib/elevenlabs/tools-config.ts` - ElevenLabs Tools pointing to Next.js APIs
+- `lib/elevenlabs/system-prompt.md` - Triage logic and emergency detection rules
+- `lib/openclaw/post-call-handler.ts` - Handle post-call webhook
+- `lib/openclaw/verification-sender.ts` - Send verification SMS
+- `lib/openclaw/staff-alerter.ts` - WhatsApp/Telegram alerts
+- `lib/ai/confidence-scorer.ts` - Gemini-based AI flag generation
 
 ### Person 2: FHIR Backend Lead
 
@@ -354,16 +389,15 @@ Given time constraints, focus on these **demo-ready** features:
 
 ## Technical Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Frontend | Next.js 14 + Tailwind + shadcn/ui | Modern, fast UI |
-| Backend | Next.js API Routes | API layer |
-| FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data |
-| Voice AI | 11 Labs Conversational AI | Voice interaction |
-| Phone | Twilio (via 11 Labs) | Inbound/outbound calls |
-| Agent | OpenClaw | Task orchestration |
-| NLU/Classification | Gemini | Intent/emergency detection |
-| Orchestration | LangChain | Tool calling, chains |
+| Layer | Technology | Purpose | When Used |
+|-------|------------|---------|-----------|
+| Frontend | Next.js 14 + Tailwind + shadcn/ui | Praxis dashboard + Patient portal | Web access |
+| Backend | Next.js API Routes | HTTP endpoints for ElevenLabs tools | During call (real-time) |
+| FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data storage | Always |
+| Voice AI | 11 Labs Conversational AI | Phone conversation, triage, booking | During call (real-time) |
+| Phone | Twilio (via 11 Labs) | Inbound/outbound calls | During call |
+| Background Agent | OpenClaw | Post-call tasks, SMS, staff alerts | After call (background) |
+| NLU/Classification | Gemini | Intent classification, confidence scoring | Called by OpenClaw |
 
 ---
 
@@ -596,12 +630,14 @@ npx shadcn@latest add button card input form calendar
 | Hour | Person 1 (Voice/AI) | Person 2 (FHIR) | Person 3 (Praxis UI) | Person 4 (Patient UI) | Person 5 (Demo) |
 |------|---------------------|-----------------|----------------------|-----------------------|-----------------|
 | 0-2 | 11 Labs setup (German) | Aidbox sandbox | Project scaffold | Project scaffold | Pitch deck draft |
-| 2-4 | Voice agent + prompts | FHIR client + flags | Dashboard layout | Intake form | Demo script (German) |
-| 4-6 | 3-tier triage logic | Patient lookup API | Urgent queue UI | Verification portal | Integration testing |
-| 6-8 | Emergency interrupt | Verification token API | Emergency alert UI | Flagged field UI | Test verification |
-| 8-10 | Confidence scoring | Appointment APIs | Patient flags display | Mobile responsive | Seed data (German) |
-| 10-12 | OpenClaw integration | Connect all APIs | Calendar + real-time | Confirmation page | End-to-end testing |
+| 2-4 | Voice prompts + triage | FHIR client + flags | Dashboard layout | Intake form | Demo script (German) |
+| 4-6 | ElevenLabs Tools config | Patient lookup API | Urgent queue UI | Verification portal | Integration testing |
+| 6-8 | Emergency detection | Verification token API | Emergency alert UI | Flagged field UI | Test ElevenLabs flow |
+| 8-10 | OpenClaw setup | Appointment APIs | Patient flags display | Mobile responsive | Seed data (German) |
+| 10-12 | OpenClaw SMS + alerts | Connect all APIs | Calendar + real-time | Confirmation page | End-to-end testing |
 | 12+ | Bug fixes + polish | Bug fixes | Polish | Polish | Rehearse demo |
+
+**Person 1 Priority:** Get ElevenLabs working first (hours 0-8), then add OpenClaw for background tasks (hours 8-12).
 
 ---
 
