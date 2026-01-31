@@ -105,6 +105,8 @@ flowchart TB
 
 ### 1. Get Aidbox License (Free for Development)
 
+**Option A: Via Portal UI**
+
 1. Go to [https://aidbox.app](https://aidbox.app) and create an account
 2. After login, click on your **project name** in the sidebar
 3. Click **Assets** from the menu
@@ -116,6 +118,19 @@ flowchart TB
    - **Hosting**: Self-hosted
 6. Click **Create**
 7. Copy the `AIDBOX_LICENSE_ID` and `AIDBOX_LICENSE_KEY` from the created license
+
+**Option B: Via API (Automated)**
+
+```bash
+# 1. Get portal token: https://aidbox.app → Project Settings → Issue Token
+export AIDBOX_PORTAL_TOKEN=<your-token>
+
+# 2. Create license
+./infra/aidbox-license.sh create ignis-hackathon
+
+# 3. Get .env format (use the ID from step 2)
+./infra/aidbox-license.sh env <license-id>
+```
 
 ### 2. Configure Environment
 
