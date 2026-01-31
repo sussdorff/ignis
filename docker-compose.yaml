@@ -4,8 +4,11 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Use SSL config if DOMAIN is set and ssl cert exists, otherwise use default
+      - ${NGINX_CONF:-./infra/nginx/nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./infra/ssl:/etc/nginx/ssl:ro
     depends_on:
       - aidbox
       - n8n

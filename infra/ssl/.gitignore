@@ -1,0 +1,8 @@
+# SSL certificates should not be committed
+*.pem
+*.crt
+*.key
+
+# Keep this directory
+!.gitkeep
+!.gitignore

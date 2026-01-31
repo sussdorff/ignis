@@ -45,6 +45,17 @@ if [[ -z "$AIDBOX_LICENSE_KEY" ]]; then
     error "AIDBOX_LICENSE_KEY not set in .env. Get a free dev license at https://aidbox.app"
 fi
 
+# Check for SSL configuration
+SSL_ENABLED=false
+if [[ -n "$DOMAIN" && -f "$PROJECT_DIR/infra/ssl/fullchain.pem" && -f "$PROJECT_DIR/infra/nginx/nginx-ssl.conf" ]]; then
+    log "SSL certificates found - enabling HTTPS for $DOMAIN"
+    export NGINX_CONF="./infra/nginx/nginx-ssl.conf"
+    SSL_ENABLED=true
+elif [[ -n "$DOMAIN" ]]; then
+    warn "DOMAIN is set but SSL certificates not found."
+    warn "Run ./infra/setup-ssl.sh after DNS is configured to enable HTTPS."
+fi
+
 # Stop any existing services
 log "Stopping existing services..."
 docker compose down --remove-orphans 2>/dev/null || true
@@ -102,29 +113,54 @@ else
 fi
 
 echo ""
-echo "═══════════════════════════════════════════════════════════════════"
-echo "  🔥 Ignis Services Ready!"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "==========================================================================="
+echo "  Ignis Services Ready!"
+echo "==========================================================================="
 echo ""
-echo "  External Access (via nginx on port 80):"
-echo "  ─────────────────────────────────────────"
-echo "  Landing:    http://$SERVER_IP/"
-echo "  Aidbox UI:  http://$SERVER_IP/aidbox/"
-echo "  FHIR API:   http://$SERVER_IP/fhir/"
-echo "  n8n:        http://$SERVER_IP/n8n/"
+
+if [[ "$SSL_ENABLED" == "true" ]]; then
+    echo "  External Access (HTTPS enabled):"
+    echo "  ---------------------------------"
+    echo "  Landing:    https://$DOMAIN/"
+    echo "  Aidbox UI:  https://$DOMAIN/aidbox/"
+    echo "  FHIR API:   https://$DOMAIN/fhir/"
+    echo "  n8n:        https://$DOMAIN/n8n/"
+    echo ""
+    echo "  HTTP requests will redirect to HTTPS automatically."
+else
+    echo "  External Access (via nginx on port 80):"
+    echo "  ----------------------------------------"
+    echo "  Landing:    http://$SERVER_IP/"
+    echo "  Aidbox UI:  http://$SERVER_IP/aidbox/"
+    echo "  FHIR API:   http://$SERVER_IP/fhir/"
+    echo "  n8n:        http://$SERVER_IP/n8n/"
+    echo ""
+    if [[ -n "$DOMAIN" ]]; then
+        echo "  To enable HTTPS, run: ./infra/setup-ssl.sh"
+    fi
+fi
 echo ""
 echo "  Credentials:"
-echo "  ─────────────────────────────────────────"
+echo "  ------------"
 echo "  Aidbox:     $AIDBOX_USER / $AIDBOX_PASS"
 echo "  n8n:        admin / ignis2026"
 echo ""
 echo "  For developers (.env.development):"
-echo "  ─────────────────────────────────────────"
-echo "  AIDBOX_URL=http://$SERVER_IP/aidbox"
-echo "  AIDBOX_FHIR_URL=http://$SERVER_IP/fhir"
+echo "  -----------------------------------"
+if [[ "$SSL_ENABLED" == "true" ]]; then
+    echo "  AIDBOX_URL=https://$DOMAIN/aidbox"
+    echo "  AIDBOX_FHIR_URL=https://$DOMAIN/fhir"
+else
+    echo "  AIDBOX_URL=http://$SERVER_IP/aidbox"
+    echo "  AIDBOX_FHIR_URL=http://$SERVER_IP/fhir"
+fi
 echo "  AIDBOX_USER=$AIDBOX_USER"
 echo "  AIDBOX_PASSWORD=$AIDBOX_PASS"
 echo ""
 echo "  Test FHIR API:"
-echo "    curl -u $AIDBOX_USER:$AIDBOX_PASS http://$SERVER_IP/fhir/Patient"
+if [[ "$SSL_ENABLED" == "true" ]]; then
+    echo "    curl -u $AIDBOX_USER:$AIDBOX_PASS https://$DOMAIN/fhir/Patient"
+else
+    echo "    curl -u $AIDBOX_USER:$AIDBOX_PASS http://$SERVER_IP/fhir/Patient"
+fi
 echo ""
