@@ -21,8 +21,7 @@ services:
       aidbox-db:
         condition: service_healthy
     environment:
-      AIDBOX_LICENSE: ${AIDBOX_LICENSE_ID}
-      AIDBOX_LICENSE_KEY: ${AIDBOX_LICENSE_KEY}
+      AIDBOX_LICENSE: ${AIDBOX_LICENSE_KEY}
       AIDBOX_ADMIN_ID: ${AIDBOX_ADMIN_ID:-admin}
       AIDBOX_ADMIN_PASSWORD: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
       AIDBOX_CLIENT_ID: ${AIDBOX_ADMIN_ID:-admin}
