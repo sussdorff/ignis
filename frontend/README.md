@@ -1,6 +1,43 @@
-# React + TypeScript + Vite
+# Ignis Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite application for the Ignis AI Patient Intake System.
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Start development server
+bun run dev
+
+# Build for production
+bun run build
+
+# Preview production build
+bun run preview
+```
+
+## Testing
+
+This project uses Vitest with React Testing Library for component testing.
+
+```bash
+# Run tests once
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
+```
+
+Test files are placed next to their components: `Component.tsx` → `Component.test.tsx`
+
+---
+
+## Vite Configuration
 
 Currently, two official plugins are available:
 
