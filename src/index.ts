@@ -29,10 +29,10 @@ app.use('/*', serveStatic({ root: './frontend/dist' }))
 app.get('*', serveStatic({ path: './frontend/dist/index.html' }))
 
 // Start server
-const port = process.env.PORT || 3000
+const port = Number(process.env.PORT) || 3000
 console.log(`🔥 Ignis server running on http://localhost:${port}`)
 
-export default {
+Bun.serve({
   port,
   fetch: app.fetch,
-}
+})
