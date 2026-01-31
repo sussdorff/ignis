@@ -84,21 +84,26 @@ clone_synthea_data() {
 
     cd "$TEMP_DIR"
 
-    # Initialize sparse checkout
-    git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" synthea-data 2>&1 | while read -r line; do
-        log_info "[GIT] $line"
-    done
+    # Initialize sparse checkout (simplified output for SSH compatibility)
+    log_info "[GIT] Cloning repository..."
+    git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" synthea-data 2>&1 || {
+        log_error "Failed to clone repository"
+        return 1
+    }
 
     cd synthea-data
 
     # Configure sparse checkout
+    log_info "[GIT] Setting up sparse checkout..."
     git sparse-checkout init --cone 2>/dev/null
     git sparse-checkout set "$DATA_PATH" 2>/dev/null
 
     # Checkout the files
-    git checkout 2>&1 | while read -r line; do
-        log_info "[GIT] $line"
-    done
+    log_info "[GIT] Checking out files..."
+    git checkout 2>&1 || {
+        log_error "Failed to checkout files"
+        return 1
+    }
 
     # Count files
     local file_count=$(find "$DATA_PATH" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
@@ -147,6 +152,12 @@ load_bundle() {
         return 0
     else
         local error_msg=$(jq -r '.issue[0].diagnostics // .message // "Unknown error"' "$response_file" 2>/dev/null || echo "HTTP $http_code")
+        # Check if it's a duplicate error (409 or contains "duplicate")
+        if [[ "$error_msg" == *"duplicate"* ]] || [[ "$http_code" == "409" ]]; then
+            log_warn "[$index/$TOTAL] Skipped (already exists): $filename"
+            ((SKIPPED++))
+            return 0
+        fi
         log_error "[$index/$TOTAL] Failed to load: $filename - $error_msg"
         ((FAILED++))
         return 1
