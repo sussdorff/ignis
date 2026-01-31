@@ -50,18 +50,29 @@ export type FHIRPatient = z.infer<typeof FHIRPatientSchema>
 
 // --- Patient lookup ---
 export const PatientLookupQuerySchema = z.object({
+  name: z.string().optional(),
   phone: z.string().optional(),
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD').optional(),
 }).refine(
-  (data) => data.phone || data.birthDate,
-  { message: 'At least one of phone or birthDate must be provided' }
+  (data) => data.name || data.phone || data.birthDate,
+  { message: 'At least one of name, phone or birthDate must be provided' }
 )
+
+export const UpcomingAppointmentSchema = z.object({
+  appointmentId: z.string(),
+  start: z.string(),
+  reason: z.string().optional(),
+})
 
 export const PatientLookupResponseSchema = z.object({
   patient: FHIRPatientSchema.nullable(),
   found: z.boolean(),
+  patientId: z.string().nullable().optional(),
+  patientName: z.string().nullable().optional(),
+  upcomingAppointment: UpcomingAppointmentSchema.nullable().optional(),
 })
 
+export type UpcomingAppointment = z.infer<typeof UpcomingAppointmentSchema>
 export type PatientLookupResponse = z.infer<typeof PatientLookupResponseSchema>
 
 // --- Patient create/update ---
@@ -93,6 +104,7 @@ export type PatientCreateOrUpdateResponse = z.infer<typeof PatientCreateOrUpdate
 // --- Appointments: slots ---
 export const SlotsQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+  urgency: z.enum(['routine', 'urgent']).optional().default('routine'),
   practitionerId: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).optional().default(10),
 })
@@ -159,6 +171,42 @@ export const RegisterEmergencyResponseSchema = z.object({
 })
 
 export type RegisterEmergencyResponse = z.infer<typeof RegisterEmergencyResponseSchema>
+
+// --- Cancel appointment ---
+export const CancelAppointmentBodySchema = z.object({
+  reason: z.string().optional(),
+})
+
+export const CancelAppointmentResponseSchema = z.object({
+  cancelled: z.boolean(),
+  appointmentId: z.string().optional(),
+  message: z.string().optional(),
+})
+
+export const AppointmentConflictErrorSchema = z.object({
+  error: z.literal('appointment_conflict'),
+  reason: z.string().optional(),
+})
+
+export type CancelAppointmentResponse = z.infer<typeof CancelAppointmentResponseSchema>
+
+// --- Request callback ---
+export const RequestCallbackRequestSchema = z.object({
+  phone: z.string().min(1, 'Phone is required'),
+  reason: z.string().min(1, 'Reason is required'),
+  category: z.enum(['prescription', 'billing', 'test_results', 'insurance', 'technical_issue', 'general']),
+  patientId: z.string().optional(),
+  patientName: z.string().optional(),
+})
+
+export const RequestCallbackResponseSchema = z.object({
+  callbackId: z.string(),
+  estimatedTime: z.string().optional(),
+  message: z.string().optional(),
+})
+
+export type RequestCallbackRequest = z.infer<typeof RequestCallbackRequestSchema>
+export type RequestCallbackResponse = z.infer<typeof RequestCallbackResponseSchema>
 
 // =============================================================================
 // Error response schemas

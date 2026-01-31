@@ -5,6 +5,7 @@ import * as YAML from 'yaml'
 import patients from './routes/patients'
 import appointments from './routes/appointments'
 import queue from './routes/queue'
+import callback from './routes/callback'
 import { serveStatic } from 'hono/bun'
 
 const app = new Hono()
@@ -41,6 +42,9 @@ app.route('/api/appointments', appointments)
 
 // Queue routes (add_to_urgent_queue, register_emergency_transfer)
 app.route('/api/queue', queue)
+
+// Callback route (request_callback)
+app.route('/api/callback', callback)
 
 // Serve frontend static files (built React app)
 app.use('/*', serveStatic({ root: './frontend/dist' }))

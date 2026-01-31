@@ -22,22 +22,36 @@ function patientMatchesPhone(patient: FHIRPatient, normalizedPhone: string): boo
   return phones.some((p) => p.includes(normalizedPhone) || normalizedPhone.includes(p))
 }
 
+/** Return true if patient's name (family or given) partially matches the search string (case-insensitive). */
+function patientMatchesName(patient: FHIRPatient, nameQuery: string): boolean {
+  const q = nameQuery.trim().toLowerCase()
+  if (!q) return true
+  const names = patient.name ?? []
+  for (const n of names) {
+    const family = (n.family ?? '').toLowerCase()
+    const given = (n.given ?? []).join(' ').toLowerCase()
+    if (family.includes(q) || given.includes(q) || q.includes(family) || q.includes(given)) return true
+  }
+  return false
+}
+
 /**
- * Find a patient by phone and/or birthdate via Aidbox FHIR search.
+ * Find a patient by name, phone and/or birthdate via Aidbox FHIR search.
  * Returns the patient if exactly one match; null otherwise.
- * Uses birthdate for FHIR search (Aidbox); filters by phone in memory when both provided.
  */
 export async function findPatient(
+  name?: string,
   phone?: string,
   birthDate?: string
 ): Promise<FHIRPatient | null> {
   const params = new URLSearchParams()
-  // Prefer birthdate for search (Aidbox returns results); telecom token often doesn't match stored value
   if (birthDate) {
     params.set('birthdate', birthDate)
   } else if (phone) {
     const value = normalizePhone(phone)
     params.set('telecom', `phone|${value}`)
+  } else if (name?.trim()) {
+    params.set('name', name.trim())
   }
   if (params.size === 0) {
     return null
@@ -50,12 +64,54 @@ export async function findPatient(
     .map((e) => e.resource)
     .filter((r): r is FHIRPatient => r?.resourceType === 'Patient')
 
+  if (name?.trim() && patients.length > 0) {
+    patients = patients.filter((p) => patientMatchesName(p, name))
+  }
   if (phone && patients.length > 0) {
     const normalized = normalizePhone(phone)
     patients = patients.filter((p) => patientMatchesPhone(p, normalized))
   }
 
   return patients.length === 1 ? patients[0]! : null
+}
+
+/** Minimal FHIR Appointment for upcoming-appointment response. */
+interface FHIRAppointmentMin {
+  resourceType: 'Appointment'
+  id?: string
+  start?: string
+  description?: string
+}
+
+/** FHIR Bundle for Appointment search. */
+interface AppointmentBundle {
+  resourceType: 'Bundle'
+  entry?: Array<{ resource?: FHIRAppointmentMin }>
+}
+
+/**
+ * Get the next upcoming appointment for a patient (start >= today).
+ * Returns null if none or on error.
+ */
+export async function getUpcomingAppointment(patientId: string): Promise<{
+  appointmentId: string
+  start: string
+  reason?: string
+} | null> {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const path = `Appointment?participant=Patient/${patientId}&date=ge${today}&_sort=date&_count=1`
+    const bundle = (await fhirClient.get(path)) as AppointmentBundle
+    const entry = bundle.entry?.[0]?.resource
+    if (!entry?.id || !entry.start) return null
+    return {
+      appointmentId: entry.id,
+      start: entry.start,
+      reason: entry.description,
+    }
+  } catch {
+    return null
+  }
 }
 
 /**

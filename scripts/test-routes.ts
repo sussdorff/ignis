@@ -94,14 +94,35 @@ async function run(): Promise<void> {
   try {
     const lookupRes = await get('/api/patients/lookup?birthDate=1985-03-15')
     assert(lookupRes.ok, `lookup status ${lookupRes.status}`)
-    const lookup = (await lookupRes.json()) as { patient: unknown; found: boolean }
+    const lookup = (await lookupRes.json()) as {
+      patient: unknown
+      found: boolean
+      patientId?: string | null
+      patientName?: string | null
+      upcomingAppointment?: { appointmentId: string; start: string; reason?: string } | null
+    }
     assert(typeof lookup.found === 'boolean', 'lookup.found')
     if (lookup.found) {
       assert(isFHIRPatient(lookup.patient), 'lookup patient is FHIR from Aidbox')
+      assert(typeof lookup.patientId === 'string', 'lookup.patientId when found')
+      assert(typeof lookup.patientName === 'string', 'lookup.patientName when found')
     }
-    ok('GET /api/patients/lookup?birthDate=... (Aidbox search)')
+    ok('GET /api/patients/lookup?birthDate=... (Aidbox search, patientId/patientName)')
   } catch (e) {
     fail('GET /api/patients/lookup', e)
+  }
+
+  try {
+    const lookupNameRes = await get('/api/patients/lookup?name=Müller')
+    assert(lookupNameRes.ok, `lookup by name status ${lookupNameRes.status}`)
+    const lookupName = (await lookupNameRes.json()) as { patient: unknown; found: boolean; patientId?: string; patientName?: string }
+    assert(lookupName.found === true, 'lookup by name should find patient')
+    assert(isFHIRPatient(lookupName.patient), 'lookup by name patient is FHIR')
+    assert(lookupName.patientId === 'patient-1', 'lookup by name patientId')
+    assert(typeof lookupName.patientName === 'string' && lookupName.patientName.length > 0, 'lookup by name patientName')
+    ok('GET /api/patients/lookup?name=... (Aidbox search by name)')
+  } catch (e) {
+    fail('GET /api/patients/lookup by name', e)
   }
 
   try {
@@ -170,6 +191,16 @@ async function run(): Promise<void> {
   }
 
   try {
+    const slotsUrgentRes = await get('/api/appointments/slots?date=2030-01-15&urgency=urgent&limit=5')
+    assert(slotsUrgentRes.ok, `slots urgency status ${slotsUrgentRes.status}`)
+    const slotsUrgent = (await slotsUrgentRes.json()) as { slots: unknown[] }
+    assert(Array.isArray(slotsUrgent.slots) && slotsUrgent.slots.length === 0, 'urgency=urgent with non-today date returns empty slots')
+    ok('GET /api/appointments/slots?urgency=urgent (non-today → empty)')
+  } catch (e) {
+    fail('GET /api/appointments/slots urgency', e)
+  }
+
+  try {
     const bookRes = await post('/api/appointments', {
       slotId: 'stub-2026-02-01-0',
       patientId: 'patient-1',
@@ -191,6 +222,51 @@ async function run(): Promise<void> {
     ok('POST /api/appointments (unknown patient → 404)')
   } catch (e) {
     fail('POST /api/appointments book 404', e)
+  }
+
+  try {
+    const cancelRes = await post('/api/appointments/cancel/appointment-1', {})
+    assert(cancelRes.ok || cancelRes.status === 409, `cancel status ${cancelRes.status}`)
+    const cancel = (await cancelRes.json()) as { cancelled?: boolean; appointmentId?: string; error?: string; reason?: string }
+    if (cancelRes.status === 200) {
+      assert(cancel.cancelled === true && cancel.appointmentId != null, 'cancel response')
+    } else {
+      assert(cancel.error === 'appointment_conflict', 'cancel 409 conflict')
+    }
+    ok('POST /api/appointments/cancel/:id (200 or 409 if already cancelled)')
+  } catch (e) {
+    fail('POST /api/appointments/cancel', e)
+  }
+
+  try {
+    const cancelNotFoundRes = await post('/api/appointments/cancel/nonexistent-appointment-xyz', {})
+    assert(cancelNotFoundRes.status === 404, `cancel nonexistent should 404, got ${cancelNotFoundRes.status}`)
+    ok('POST /api/appointments/cancel (nonexistent → 404)')
+  } catch (e) {
+    fail('POST /api/appointments/cancel 404', e)
+  }
+
+  console.log('\n--- Callback ---')
+  try {
+    const callbackRes = await post('/api/callback', {
+      phone: '+49 170 1112233',
+      reason: 'Test callback',
+      category: 'general',
+    })
+    assert(callbackRes.status === 201, `callback status ${callbackRes.status}`)
+    const callback = (await callbackRes.json()) as { callbackId: string; estimatedTime?: string; message?: string }
+    assert(typeof callback.callbackId === 'string' && callback.callbackId.length > 0, 'callback callbackId')
+    ok('POST /api/callback (valid → 201)')
+  } catch (e) {
+    fail('POST /api/callback', e)
+  }
+
+  try {
+    const callbackBadRes = await post('/api/callback', { phone: '+49 111', reason: 'X', category: 'invalid_category' as string })
+    assert(callbackBadRes.status === 400, `callback invalid category should 400, got ${callbackBadRes.status}`)
+    ok('POST /api/callback (invalid category → 400)')
+  } catch (e) {
+    fail('POST /api/callback validation', e)
   }
 
   console.log('\n--- Queue (urgent uses Aidbox patient; emergency no patient) ---')

@@ -5,8 +5,10 @@ import {
   type Slot,
   type SlotsResponse,
   type BookAppointmentResponse,
+  type CancelAppointmentResponse,
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
+import { cancelAppointment } from '../lib/aidbox-appointments'
 
 const appointments = new Hono()
 
@@ -54,6 +56,11 @@ function stubSlotTimes(slotId: string): { start: string; end: string } | null {
   return slot ? { start: slot.start, end: slot.end } : null
 }
 
+/** Today's date in Europe/Berlin (YYYY-MM-DD). */
+function todayBerlin(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+}
+
 // =============================================================================
 // GET /api/appointments/slots - get_available_slots
 // =============================================================================
@@ -64,7 +71,10 @@ appointments.get('/slots', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { date, limit } = parsed.data
+  const { date, urgency, limit } = parsed.data
+  if (urgency === 'urgent' && date !== todayBerlin()) {
+    return c.json({ slots: [] }, 200)
+  }
   const slots = generateStubSlots(date, limit)
   const response: SlotsResponse = { slots }
   return c.json(response, 200)
@@ -122,6 +132,32 @@ appointments.post('/', async (c) => {
     confirmationMessage: `Ihre Termin wurde für ${times.start} bestätigt.`,
   }
   return c.json(response, 201)
+})
+
+// =============================================================================
+// POST /api/appointments/cancel/:appointmentId - cancel_appointment
+// =============================================================================
+appointments.post('/cancel/:appointmentId', async (c) => {
+  const appointmentId = c.req.param('appointmentId')
+  if (!appointmentId) {
+    return c.json({ error: 'validation_failed', message: 'appointmentId is required' }, 400)
+  }
+
+  const result = await cancelAppointment(appointmentId)
+
+  if (result.ok === false && result.code === 'not_found') {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  if (result.ok === false && result.code === 'conflict') {
+    return c.json({ error: 'appointment_conflict', reason: result.reason }, 409)
+  }
+
+  const response: CancelAppointmentResponse = {
+    cancelled: true,
+    appointmentId: result.appointmentId,
+    message: 'Der Termin wurde storniert.',
+  }
+  return c.json(response, 200)
 })
 
 export default appointments
