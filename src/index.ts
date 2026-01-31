@@ -8,6 +8,8 @@ import queue from './routes/queue'
 import callback from './routes/callback'
 import twilio from './routes/twilio'
 import questionnaires from './routes/questionnaires'
+import auth from './routes/auth'
+import voice from './routes/voice'
 import { serveStatic } from 'hono/bun'
 import { handleTwilioWebSocket } from './lib/twilio-websocket'
 import type { ServerWebSocket } from 'bun'
@@ -52,6 +54,12 @@ app.route('/api/callback', callback)
 
 // Questionnaire routes (get questionnaires from FHIR store)
 app.route('/api/questionnaires', questionnaires)
+
+// Authentication routes (magic link, SMS OTP)
+app.route('/api/auth', auth)
+
+// Voice AI authentication routes (identify_patient, authenticate_patient)
+app.route('/api/voice', voice)
 
 // Twilio routes (voice webhooks, call status, WebSocket streaming)
 app.route('/api/twilio', twilio)
