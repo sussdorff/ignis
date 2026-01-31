@@ -188,16 +188,14 @@ This will:
 # 1. Provision Hetzner server
 ./infra/provision.sh
 
-# 2. Setup everything (clones repo, installs Bun, builds app, starts services)
+# 2. Setup everything (clones repo, builds and starts all services)
 ./infra/setup-remote.sh <server-ip>
 ```
 
 This will:
 - Clone the repo to `/opt/ignis`
-- Install Bun runtime
-- Build frontend and backend
-- Create systemd service for the app
-- Start Docker services (Aidbox, n8n, nginx)
+- Build Docker image for the app (Bun backend + React frontend)
+- Start all Docker services (app, Aidbox, n8n, nginx)
 - Configure nginx reverse proxy
 
 ### Updating Existing Server
@@ -210,9 +208,8 @@ After pushing code changes:
 
 This will:
 - Pull latest code
-- Rebuild frontend
-- Restart the app service
-- Restart nginx
+- Rebuild Docker images
+- Restart all services
 
 ### Manual Deployment
 
@@ -221,20 +218,28 @@ On the server:
 ```bash
 cd /opt/ignis
 git pull origin main
-./infra/deploy-app.sh
+docker compose up -d --build
 ```
 
 ### Service Management
 
 ```bash
-# Check status
-sudo systemctl status ignis-app
+# Check all services
+docker compose ps
 
 # View logs
-sudo journalctl -u ignis-app -f
+docker compose logs -f
 
-# Restart
-sudo systemctl restart ignis-app
+# View specific service logs
+docker compose logs app -f
+docker compose logs aidbox -f
+docker compose logs nginx -f
+
+# Restart a service
+docker compose restart app
+
+# Rebuild and restart
+docker compose up -d --build app
 ```
 
 ## Infrastructure
@@ -266,14 +271,15 @@ ssh hackathon@167.235.236.238
 
 ## Services
 
-| Service | Port | Access | Credentials |
-|---------|------|--------|-------------|
-| Ignis App | 3000 | http://server-ip/ | - |
-| Aidbox (FHIR) | - | http://server-ip/aidbox/ | admin / ignis2026 |
-| FHIR API | - | http://server-ip/fhir/ | admin / ignis2026 |
-| n8n (Workflows) | - | http://server-ip/n8n/ | admin / ignis2026 |
+| Service | Access | Credentials |
+|---------|--------|-------------|
+| **Ignis App** | http://server-ip/app/ | - |
+| **Ignis API** | http://server-ip/api/ | - |
+| **Aidbox UI** | http://server-ip/ | admin / ignis2026 |
+| **FHIR API** | http://server-ip/fhir/ | admin / ignis2026 |
+| **n8n** | http://server-ip/n8n/ | admin / ignis2026 |
 
-All services are proxied through nginx on port 80/443.
+All services run in Docker and are proxied through nginx.
 
 ## Project Structure
 

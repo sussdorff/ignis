@@ -12,7 +12,35 @@ services:
     depends_on:
       - aidbox
       - n8n
+      - app
     restart: unless-stopped
+
+  # Ignis App (Bun backend + React frontend)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - AIDBOX_URL=http://aidbox:8080
+      - AIDBOX_ADMIN_ID=${AIDBOX_ADMIN_ID:-admin}
+      - AIDBOX_ADMIN_PASSWORD=${AIDBOX_ADMIN_PASSWORD:-ignis2026}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+    expose:
+      - "3000"
+    depends_on:
+      aidbox:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # PostgreSQL for Aidbox (using standard postgres image)
   aidbox-db:

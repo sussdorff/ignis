@@ -17,19 +17,16 @@ cd /opt/ignis
 echo "Pulling latest changes..."
 git pull origin main
 
-echo "Deploying app..."
-./infra/deploy-app.sh --restart
-
-echo "Restarting nginx..."
-docker compose restart nginx
+echo "Rebuilding and restarting services..."
+docker compose up -d --build
 
 echo ""
 echo "✓ Update complete!"
 echo ""
 echo "Check status:"
-echo "  App:    sudo systemctl status ignis-app"
-echo "  Logs:   sudo journalctl -u ignis-app -f"
-echo "  Nginx:  docker compose logs nginx"
+echo "  Services:  docker compose ps"
+echo "  Logs:      docker compose logs -f"
+echo "  App logs:  docker compose logs app -f"
 echo ""
 REMOTE_SCRIPT
 
