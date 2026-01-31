@@ -93,57 +93,80 @@ flowchart TB
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| Frontend | Next.js 14 + Tailwind + shadcn/ui | Praxis dashboard + Patient portal |
-| Backend | Next.js API Routes | Real-time APIs for ElevenLabs tools |
+| Frontend | Vite + React + TypeScript + Tailwind + shadcn/ui | Praxis dashboard + Patient portal |
+| Backend | Bun + Hono | Real-time APIs for ElevenLabs tools |
 | FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data storage |
 | Voice AI | 11 Labs Conversational AI | Phone conversation handling |
 | Phone | Twilio (via 11 Labs) | Inbound/outbound calls |
 | Background Agent | OpenClaw | Post-call tasks, notifications, follow-ups |
 | NLU | Gemini | Intent classification, confidence scoring |
 
+## Project Status
+
+✅ **Completed**
+- Backend scaffold (Bun + Hono) with health check endpoint
+- Frontend scaffold (Vite + React + TypeScript)
+- Tailwind CSS v4 integration
+- shadcn/ui components (button, card, input, form, calendar, label)
+- Path aliases configured (@/* → src/*)
+- Frontend proxy to backend (/api → localhost:3000)
+
+🚧 **To Do**
+- FHIR client (Aidbox integration)
+- API routes (patients, appointments, queue, verification)
+- UI pages (Praxis dashboard, Patient portal)
+- ElevenLabs voice integration
+- OpenClaw background tasks
+
+📋 **Full Plan**: See [docs/PLAN.md](docs/PLAN.md)
+
 ## Quick Start
 
-### 1. Get Aidbox License (Free for Development)
+### 1. Install Dependencies
 
-**Option A: Via Portal UI**
+**Backend** (Bun + Hono)
+```bash
+# Bun is already installed in the project
+~/.bun/bin/bun install
+```
+
+**Frontend** (Vite + React)
+```bash
+cd frontend
+~/.bun/bin/bun install
+```
+
+### 2. Start Development Servers
+
+**Terminal 1 - Backend** (port 3000)
+```bash
+~/.bun/bin/bun run dev
+```
+
+**Terminal 2 - Frontend** (port 5173)
+```bash
+cd frontend
+~/.bun/bin/bun run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+### 3. Setup Aidbox (Optional - for FHIR backend)
+
+**Get Aidbox License** (Free for Development)
 
 1. Go to [https://aidbox.app](https://aidbox.app) and create an account
 2. After login, click on your **project name** in the sidebar
-3. Click **Assets** from the menu
-4. Click **New Aidbox** (upper right)
-5. Configure:
-   - **License type**: Dev
-   - **License name**: ignis-hackathon
-   - **Goal**: Development
-   - **Hosting**: Self-hosted
-6. Click **Create**
-7. Copy the `AIDBOX_LICENSE_ID` and `AIDBOX_LICENSE_KEY` from the created license
+3. Click **Assets** → **New Aidbox**
+4. Configure: License type = **Dev**, Hosting = **Self-hosted**
+5. Copy the `AIDBOX_LICENSE_ID` and `AIDBOX_LICENSE_KEY`
 
-**Option B: Via API (Automated)**
-
-```bash
-# 1. Get portal token: https://aidbox.app → Project Settings → Issue Token
-export AIDBOX_PORTAL_TOKEN=<your-token>
-
-# 2. Create license
-./infra/aidbox-license.sh create ignis-hackathon
-
-# 3. Get .env format (use the ID from step 2)
-./infra/aidbox-license.sh env <license-id>
-```
-
-### 2. Configure Environment
+**Configure and Start**
 
 ```bash
 cp .env.example .env
-# Edit .env and add your Aidbox keys:
-# AIDBOX_LICENSE_ID=<your-license-id>
-# AIDBOX_LICENSE_KEY=<your-license-key>
-```
+# Edit .env and add your Aidbox keys
 
-### 3. Start Services
-
-```bash
 ./infra/setup-aidbox.sh
 ```
 
@@ -152,7 +175,7 @@ This will:
 - Wait for health checks
 - Load demo FHIR data (patients, practitioners, appointments)
 
-### 4. Verify
+**Verify**
 
 - Aidbox UI: http://localhost:8080 (admin/ignis2026)
 - n8n Workflows: http://localhost:5678 (admin/ignis2026)
