@@ -163,6 +163,25 @@ cd frontend
 
 Open http://localhost:5173 in your browser.
 
+### Backend for ElevenLabs (Voice Team)
+
+The Bun backend exposes the API contract and endpoints used by the ElevenLabs Conversational AI agent during real-time patient intake calls.
+
+| Item | Value |
+|------|--------|
+| **Base URL (local)** | `http://localhost:3000` |
+| **Base URL (deployed)** | `https://ignis.cognovis.de` (or set `API_BASE_URL` in env) |
+| **OpenAPI spec** | `GET /api/openapi.json` — load this URL in ElevenLabs tools so the agent uses the correct request/response shapes. The spec’s `servers[0].url` is set from `API_BASE_URL` (default `http://localhost:3000/api`). |
+| **CORS** | Enabled for `/api/*`; cross-origin requests from the voice app are allowed. |
+
+**Endpoints (per OpenAPI):**
+
+- **Patients:** `GET /api/patients/lookup` (phone, birthDate), `POST /api/patients` (create/update) — backed by Aidbox FHIR.
+- **Appointments:** `GET /api/appointments/slots` (date, practitionerId?, limit?), `POST /api/appointments` (slotId, patientId) — **stub** implementations return fixed/mock slots and confirm booking without persisting to FHIR (for voice testing). Real FHIR Slot/Appointment wiring can follow.
+- **Queue:** `POST /api/queue/urgent` (patientId), `POST /api/queue/emergency` (optional body) — **stub** implementations return 201 with generated IDs; no persistence yet.
+
+Use the same base URL for all requests (e.g. `http://localhost:3000/api/patients/lookup?birthDate=1985-03-15`).
+
 ### 3. Setup Aidbox (Optional - for FHIR backend)
 
 **Get Aidbox License** (Free for Development)

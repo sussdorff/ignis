@@ -90,6 +90,76 @@ export const PatientCreateOrUpdateResponseSchema = z.object({
 
 export type PatientCreateOrUpdateResponse = z.infer<typeof PatientCreateOrUpdateResponseSchema>
 
+// --- Appointments: slots ---
+export const SlotsQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+  practitionerId: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(10),
+})
+
+export const SlotSchema = z.object({
+  slotId: z.string(),
+  start: z.string(),
+  end: z.string(),
+  practitionerId: z.string().optional(),
+  practitionerDisplay: z.string().optional(),
+})
+
+export const SlotsResponseSchema = z.object({
+  slots: z.array(SlotSchema),
+})
+
+export type Slot = z.infer<typeof SlotSchema>
+export type SlotsResponse = z.infer<typeof SlotsResponseSchema>
+
+// --- Appointments: book ---
+export const BookAppointmentRequestSchema = z.object({
+  slotId: z.string().min(1, 'slotId is required'),
+  patientId: z.string().min(1, 'patientId is required'),
+  practitionerId: z.string().optional(),
+  type: z.enum(['routine', 'urgent']).optional(),
+  reason: z.string().optional(),
+})
+
+export const BookAppointmentResponseSchema = z.object({
+  appointment: z.record(z.string(), z.unknown()),
+  start: z.string(),
+  end: z.string(),
+  confirmationMessage: z.string().optional(),
+})
+
+export type BookAppointmentRequest = z.infer<typeof BookAppointmentRequestSchema>
+export type BookAppointmentResponse = z.infer<typeof BookAppointmentResponseSchema>
+
+// --- Queue: urgent ---
+export const AddToUrgentQueueRequestSchema = z.object({
+  patientId: z.string().min(1, 'patientId is required'),
+  reason: z.string().optional(),
+  phone: z.string().optional(),
+})
+
+export const AddToUrgentQueueResponseSchema = z.object({
+  queueEntryId: z.string(),
+  position: z.number().optional(),
+  message: z.string().optional(),
+})
+
+export type AddToUrgentQueueResponse = z.infer<typeof AddToUrgentQueueResponseSchema>
+
+// --- Queue: emergency ---
+export const RegisterEmergencyRequestSchema = z.object({
+  patientId: z.string().optional(),
+  phone: z.string().optional(),
+  reason: z.string().optional(),
+})
+
+export const RegisterEmergencyResponseSchema = z.object({
+  transferId: z.string(),
+  message: z.string().optional(),
+})
+
+export type RegisterEmergencyResponse = z.infer<typeof RegisterEmergencyResponseSchema>
+
 // =============================================================================
 // Error response schemas
 // =============================================================================

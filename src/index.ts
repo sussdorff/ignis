@@ -1,7 +1,10 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import * as YAML from 'yaml'
 import patients from './routes/patients'
+import appointments from './routes/appointments'
+import queue from './routes/queue'
 import { serveStatic } from 'hono/bun'
 
 const app = new Hono()
@@ -16,11 +19,28 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // API routes
 app.get('/api', (c) => c.json({ message: 'Ignis API', version: '0.1.0' }))
 
+// OpenAPI spec for ElevenLabs tools (servers.url set from API_BASE_URL env)
+const openApiSpecPath = new URL('../docs/backend-services-elevenlabs.openapi.yaml', import.meta.url)
+let cachedOpenApiJson: object | null = null
+app.get('/api/openapi.json', async (c) => {
+  if (!cachedOpenApiJson) {
+    const yamlText = await Bun.file(openApiSpecPath).text()
+    const spec = YAML.parse(yamlText) as { servers?: Array<{ url: string }> }
+    const baseUrl = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}/api`
+    if (spec.servers?.[0]) spec.servers[0].url = baseUrl
+    cachedOpenApiJson = spec
+  }
+  return c.json(cachedOpenApiJson)
+})
+
 // Patient routes (per OpenAPI spec: patient_lookup, patient_create_or_update)
 app.route('/api/patients', patients)
 
-// Appointment routes (to be implemented)
-app.get('/api/appointments', (c) => c.json({ appointments: [], message: 'Not implemented yet' }))
+// Appointment routes (get_available_slots, book_appointment)
+app.route('/api/appointments', appointments)
+
+// Queue routes (add_to_urgent_queue, register_emergency_transfer)
+app.route('/api/queue', queue)
 
 // Serve frontend static files (built React app)
 app.use('/*', serveStatic({ root: './frontend/dist' }))
