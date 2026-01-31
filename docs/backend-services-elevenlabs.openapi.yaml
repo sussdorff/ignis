@@ -28,14 +28,19 @@ paths:
       operationId: patient_lookup
       summary: Patient lookup
       description: |
-        Find a returning patient by phone and/or date of birth (Geburtsdatum).
-        **When the agent uses it:** After the caller has provided phone and/or DOB
-        (e.g. "Name und Geburtsdatum?" / "Telefonnummer?"). Used to decide returning
-        vs new patient and to pre-fill data.
-        **FHIR:** Aidbox GET /fhir/Patient with telecom and birthdate search.
+        Find a returning patient by name and date of birth, or phone.
+        **When the agent uses it:** After the caller has provided name + DOB
+        (e.g. "Name und Geburtsdatum?"). Used to decide returning vs new patient.
+        **FHIR:** Aidbox GET /fhir/Patient with name, telecom, birthdate search.
       tags:
         - patients
       parameters:
+        - name: name
+          in: query
+          description: Patient name (partial match on family or given name)
+          required: false
+          schema:
+            type: string
         - name: phone
           in: query
           description: E.164 or national format; normalized server-side
@@ -137,6 +142,16 @@ paths:
           schema:
             type: string
             format: date
+        - name: urgency
+          in: query
+          description: Filter slots by urgency level. Urgent returns only same-day slots.
+          required: false
+          schema:
+            type: string
+            enum:
+              - routine
+              - urgent
+            default: routine
         - name: practitionerId
           in: query
           description: FHIR Practitioner id; if omitted, all practitioners (or default)
@@ -216,6 +231,97 @@ paths:
                 $ref: '#/components/schemas/SlotUnavailableError'
         '500':
           description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /appointments/cancel/{appointmentId}:
+    post:
+      operationId: cancel_appointment
+      summary: Cancel appointment
+      description: |
+        Cancel an existing appointment.
+        **When the agent uses it:** When the patient wants to cancel an appointment.
+        First use patient_lookup to find upcoming appointment, then cancel.
+        **FHIR:** Update Appointment status to cancelled; free up Slot.
+      tags:
+        - appointments
+      parameters:
+        - name: appointmentId
+          in: path
+          description: FHIR Appointment id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Reason for cancellation (optional)
+      responses:
+        '200':
+          description: Appointment cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelAppointmentResponse'
+        '404':
+          description: Appointment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '409':
+          description: Appointment already cancelled or in the past
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentConflictError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /callback:
+    post:
+      operationId: request_callback
+      summary: Request callback
+      description: |
+        Schedule a callback when tools fail, patient requests it, or for requests
+        that require staff handling (prescriptions, billing, test results).
+        **When the agent uses it:** After tool failures, or for out-of-scope requests.
+        **Backend:** Creates a callback task for staff to process.
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestCallbackRequest'
+      responses:
+        '201':
+          description: Callback scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestCallbackResponse'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Backend error
           content:
             application/json:
               schema:
@@ -305,13 +411,33 @@ components:
       required:
         - found
       properties:
+        found:
+          type: boolean
+          description: true if a single patient was found, false if none or ambiguous
         patient:
           nullable: true
           description: FHIR R4 Patient resource if exactly one match; null otherwise
           type: object
-        found:
-          type: boolean
-          description: true if a single patient was found, false if none or ambiguous
+        patientId:
+          type: string
+          nullable: true
+          description: FHIR Patient id for subsequent API calls
+        patientName:
+          type: string
+          nullable: true
+          description: Display name for greeting (e.g. "Herr Müller" / "Mr. Smith")
+        upcomingAppointment:
+          nullable: true
+          description: Next scheduled appointment if any
+          type: object
+          properties:
+            appointmentId:
+              type: string
+            start:
+              type: string
+              format: date-time
+            reason:
+              type: string
 
     # --- Patient create/update ---
     PatientCreateOrUpdateRequest:
@@ -510,6 +636,78 @@ components:
         message:
           type: string
           description: Optional wording for the agent
+
+    # --- Cancel appointment ---
+    CancelAppointmentResponse:
+      type: object
+      required:
+        - cancelled
+      properties:
+        cancelled:
+          type: boolean
+          description: true if successfully cancelled
+        appointmentId:
+          type: string
+        message:
+          type: string
+          description: Confirmation message for the agent
+
+    AppointmentConflictError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: appointment_conflict
+        reason:
+          type: string
+          description: e.g. "already_cancelled", "in_the_past"
+
+    # --- Request callback ---
+    RequestCallbackRequest:
+      type: object
+      required:
+        - phone
+        - reason
+        - category
+      properties:
+        phone:
+          type: string
+          description: Callback phone number
+        reason:
+          type: string
+          description: Brief description of why callback is needed
+        category:
+          type: string
+          enum:
+            - prescription
+            - billing
+            - test_results
+            - insurance
+            - technical_issue
+            - general
+          description: Category to route callback to appropriate staff
+        patientId:
+          type: string
+          description: FHIR Patient id if known
+        patientName:
+          type: string
+          description: Patient name for reference
+
+    RequestCallbackResponse:
+      type: object
+      required:
+        - callbackId
+      properties:
+        callbackId:
+          type: string
+        estimatedTime:
+          type: string
+          description: Estimated callback time (e.g. "within 2 hours")
+        message:
+          type: string
+          description: Confirmation message for the agent
 
     # --- Common errors ---
     ValidationError:
