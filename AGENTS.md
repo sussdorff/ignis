@@ -2,6 +2,25 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## Testing
+
+We use **Bun Test** for automated testing. Always run tests before committing code changes.
+
+```bash
+# Run all tests (requires server running on localhost:3000)
+bun test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run specific test file
+bun test src/__tests__/questionnaires.test.ts
+```
+
+**Test location**: `src/__tests__/*.test.ts`
+
+**Note**: Tests are integration tests that hit the actual API endpoints. Make sure the server is running (`bun run dev`) before running tests.
+
 ## Quick Reference
 
 ```bash
