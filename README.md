@@ -103,7 +103,7 @@ flowchart TB
 
 ## Project Status
 
-✅ **Completed** (Foundation - ~25%)
+✅ **Completed** (Foundation + Backend API — ~50%)
 - ✅ Backend scaffold (Bun + Hono) with health check endpoint
 - ✅ Frontend scaffold (Vite + React + TypeScript)
 - ✅ Tailwind CSS v4 integration
@@ -112,22 +112,25 @@ flowchart TB
 - ✅ Docker-based deployment (app, Aidbox, n8n, nginx)
 - ✅ Automated deployment scripts (setup-remote.sh, update-server.sh)
 - ✅ Nginx reverse proxy routing (/app, /api, /fhir, /n8n)
-- ✅ Basic API routes structure (patients endpoint with mock data)
+- ✅ FHIR client and Aidbox integration (config, fhir-client, aidbox-patients, aidbox-appointments)
+- ✅ Real API for patients (lookup by phone/DOB/name, create/update) backed by Aidbox
+- ✅ Patient lookup with returning patient pre-fill (patientId, patientName, upcomingAppointment)
+- ✅ Appointments API: slots (with urgency filter), book, cancel — cancel backed by Aidbox
+- ✅ Queue API stubs: POST /api/queue/urgent, POST /api/queue/emergency
+- ✅ Callback API stub: POST /api/callback
+- ✅ OpenAPI spec (GET /api/openapi.json) and CORS for ElevenLabs voice tools
 
 🚧 **In Progress** (Next Steps)
-- 🔄 FHIR client (Aidbox integration) - **PRIORITY**
-- 🔄 Real API implementation (replace mock data with FHIR)
+- 🔄 UI pages (Praxis dashboard, Patient portal) — page scaffolds exist; wiring to API in progress
+- 🔄 ElevenLabs voice integration (German conversation flow using backend APIs)
 
-🔴 **Not Started** (Core Features - ~75%)
-- ❌ Patient lookup by phone/DOB with returning patient pre-fill
-- ❌ 3-tier triage logic (Emergency/Urgent/Regular)
-- ❌ Emergency detection (always-on interrupt)
+🔴 **Not Started** (Remaining Core Features — ~45%)
+- ❌ 3-tier triage logic in voice flow (API stubs exist; agent flow not wired)
+- ❌ Emergency detection (always-on interrupt during call)
 - ❌ Patient verification portal (token-based secure access)
 - ❌ AI flagging system (uncertain fields for doctor review)
-- ❌ UI pages (Praxis dashboard, Patient portal, Appointment booking)
-- ❌ ElevenLabs voice integration (German conversation flow)
 - ❌ OpenClaw background tasks (SMS, WhatsApp, call analysis)
-- ❌ German seed data (Ärzte, schedules, sample patients)
+- ❌ German seed data (Ärzte, schedules, sample patients — demo bundle exists)
 - ❌ Pitch deck and demo preparation
 
 📋 **Full Plan**: See [docs/PLAN.md](docs/PLAN.md)
@@ -358,23 +361,25 @@ ignis/
 ├── src/                     # Bun + Hono backend
 │   ├── index.ts             # Entry point (serves API + frontend)
 │   ├── routes/              # API route handlers
-│   │   └── patients.ts      # Patient endpoints
+│   │   ├── patients.ts      # Patient lookup, create/update
+│   │   ├── appointments.ts # Slots, book, cancel
+│   │   ├── queue.ts         # Urgent / emergency queue stubs
+│   │   └── callback.ts      # Request callback stub
 │   └── lib/                 # Shared libraries
 │       ├── schemas.ts       # Zod validation schemas
-│       ├── dummy-data.ts    # Mock data (to be replaced with FHIR)
-│       ├── fhir/            # FHIR client (to be implemented)
-│       ├── elevenlabs/      # Voice AI integration (to be implemented)
-│       ├── openclaw/        # Agent orchestration (to be implemented)
-│       └── ai/              # Triage/classification (to be implemented)
+│       ├── config.ts        # Env/config (Aidbox URL, auth)
+│       ├── fhir-client.ts   # Low-level FHIR HTTP client
+│       ├── aidbox-patients.ts   # Patient CRUD via Aidbox
+│       ├── aidbox-appointments.ts # Appointments/cancel via Aidbox
+│       └── dummy-data.ts    # Legacy mock data (reference)
 ├── frontend/                # Vite + React frontend
 │   ├── src/
 │   │   ├── App.tsx          # Main app component
-│   │   ├── components/      # React components
-│   │   │   └── ui/          # shadcn/ui components
-│   │   ├── pages/           # Page components (to be implemented)
-│   │   │   ├── praxis/      # Clinic dashboard
-│   │   │   └── patient/     # Patient-facing UI
-│   │   └── lib/             # Frontend utilities
+│   │   ├── components/      # React components (ui/, praxis/)
+│   │   ├── pages/           # Page scaffolds
+│   │   │   ├── praxis/      # Dashboard
+│   │   │   └── patient/     # Book, Intake, Verify
+│   │   └── lib/             # Frontend utilities (api, utils)
 │   └── dist/                # Built frontend (served by backend)
 ├── infra/                   # Infrastructure & deployment
 │   ├── setup-remote.sh      # Initial server setup
