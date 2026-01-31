@@ -5,8 +5,11 @@ import PatientVerify from './pages/patient/Verify'
 import PatientBook from './pages/patient/Book'
 
 function App() {
+  // Use basename only in production (when served under /app route)
+  const basename = import.meta.env.PROD ? '/app' : '/'
+  
   return (
-    <Router basename="/app">
+    <Router basename={basename}>
       <Routes>
         {/* Praxis (Clinic) Routes */}
         <Route path="/praxis" element={<PraxisDashboard />} />
