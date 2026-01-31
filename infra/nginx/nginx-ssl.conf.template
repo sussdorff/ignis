@@ -73,14 +73,14 @@ http {
 
         # Ignis App (Frontend + Backend API)
         location /app/ {
-            set $$app_upstream app:3000;
-            rewrite ^/app/(.*) /$$1 break;
-            proxy_pass http://$$app_upstream;
+            set $app_upstream app:3000;
+            rewrite ^/app/(.*) /$1 break;
+            proxy_pass http://$app_upstream;
             proxy_http_version 1.1;
-            proxy_set_header Host $$host;
-            proxy_set_header X-Real-IP $$remote_addr;
-            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $$scheme;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
             proxy_connect_timeout 60s;
             proxy_send_timeout 60s;
             proxy_read_timeout 60s;
@@ -88,13 +88,13 @@ http {
 
         # Ignis API
         location /api/ {
-            set $$app_upstream app:3000;
-            proxy_pass http://$$app_upstream;
+            set $app_upstream app:3000;
+            proxy_pass http://$app_upstream;
             proxy_http_version 1.1;
-            proxy_set_header Host $$host;
-            proxy_set_header X-Real-IP $$remote_addr;
-            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $$scheme;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
             proxy_connect_timeout 60s;
             proxy_send_timeout 60s;
             proxy_read_timeout 60s;
@@ -102,13 +102,13 @@ http {
 
         # Aidbox FHIR Server (root path for backward compatibility)
         location / {
-            set $$aidbox_upstream aidbox:8080;
-            proxy_pass http://$$aidbox_upstream;
+            set $aidbox_upstream aidbox:8080;
+            proxy_pass http://$aidbox_upstream;
             proxy_http_version 1.1;
-            proxy_set_header Host $$host;
-            proxy_set_header X-Real-IP $$remote_addr;
-            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $$scheme;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
             proxy_connect_timeout 60s;
             proxy_send_timeout 60s;
             proxy_read_timeout 60s;
@@ -116,15 +116,15 @@ http {
 
         # n8n Workflow Automation on subdomain or path
         location /n8n/ {
-            set $$n8n_upstream n8n:5678;
-            rewrite ^/n8n/(.*) /$$1 break;
-            proxy_pass http://$$n8n_upstream;
+            set $n8n_upstream n8n:5678;
+            rewrite ^/n8n/(.*) /$1 break;
+            proxy_pass http://$n8n_upstream;
             proxy_http_version 1.1;
-            proxy_set_header Host $$host;
-            proxy_set_header X-Real-IP $$remote_addr;
-            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $$scheme;
-            proxy_set_header Upgrade $$http_upgrade;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
         }
     }
