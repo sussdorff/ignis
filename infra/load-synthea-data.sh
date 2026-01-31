@@ -147,6 +147,12 @@ load_bundle() {
         return 0
     fi
 
+    # Strip problematic fields that Aidbox schema doesn't recognize
+    # multipleBirthBoolean/multipleBirthInteger are valid FHIR but Aidbox rejects as "extra property"
+    local cleaned_file="$TEMP_DIR/cleaned.json"
+    jq 'walk(if type == "object" then del(.multipleBirthBoolean, .multipleBirthInteger) else . end)' \
+        "$bundle_file" > "$cleaned_file"
+
     # POST bundle to FHIR server
     local response_file="$TEMP_DIR/response.json"
     local http_code
@@ -155,7 +161,7 @@ load_bundle() {
         -X POST \
         -H "Content-Type: application/fhir+json" \
         -u "${FHIR_USER}:${FHIR_PASS}" \
-        -d @"$bundle_file" \
+        -d @"$cleaned_file" \
         "${FHIR_BASE_URL}" 2>/dev/null || echo "000")
 
     if [[ "$http_code" == "200" ]] || [[ "$http_code" == "201" ]]; then
