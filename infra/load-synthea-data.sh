@@ -187,11 +187,15 @@ main() {
         exit 1
     fi
 
-    # Get list of JSON files
+    # Get list of JSON files (using glob for better SSH compatibility)
     local files=()
-    while IFS= read -r -d '' file; do
-        files+=("$file")
-    done < <(find "$DATA_DIR" -name "*.json" -print0 | sort -z)
+    for f in "$DATA_DIR"/*.json; do
+        [[ -f "$f" ]] && files+=("$f")
+    done
+
+    # Sort files for consistent ordering
+    IFS=$'\n' files=($(printf '%s\n' "${files[@]}" | sort))
+    unset IFS
 
     TOTAL=${#files[@]}
 
