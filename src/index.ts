@@ -10,6 +10,7 @@ import twilio from './routes/twilio'
 import questionnaires from './routes/questionnaires'
 import auth from './routes/auth'
 import voice from './routes/voice'
+import authTest from './routes/auth-test'
 import { serveStatic } from 'hono/bun'
 import { handleTwilioWebSocket } from './lib/twilio-websocket'
 import type { ServerWebSocket } from 'bun'
@@ -63,6 +64,11 @@ app.route('/api/voice', voice)
 
 // Twilio routes (voice webhooks, call status, WebSocket streaming)
 app.route('/api/twilio', twilio)
+
+// Auth test routes (for integration testing requireLevel middleware)
+if (process.env.NODE_ENV !== 'production') {
+  app.route('/api/auth-test', authTest)
+}
 
 // Serve frontend static files (built React app)
 app.use('/*', serveStatic({ root: './frontend/dist' }))
