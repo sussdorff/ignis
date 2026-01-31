@@ -199,7 +199,7 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 
 | Method | Path | Description | Status |
 |--------|------|-------------|--------|
-| `GET` | `/api/appointments/slots` | Get available slots (`date`, `urgency?`, `limit?`) | 🔶 Stub |
+| `GET` | `/api/appointments/slots` | Get available slots (`date`, `urgency?`, `practitionerId?`, `limit?`) | ✅ Aidbox |
 | `POST` | `/api/appointments` | Book appointment (`slotId`, `patientId`) | ✅ Aidbox |
 | `POST` | `/api/appointments/cancel/:appointmentId` | Cancel an appointment | ✅ Aidbox |
 
@@ -233,7 +233,7 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 | `GET` | `/api/twilio/conversations` | Debug: list active conversations |
 | `WS` | `/api/twilio/stream` | WebSocket for Twilio Media Streams |
 
-**Status Legend:** ✅ Backed by Aidbox FHIR | 🔶 Stub (mock data)
+**Status:** All API routes are now fully backed by Aidbox FHIR.
 
 Use the same base URL for all requests (e.g. `http://localhost:3000/api/patients/lookup?birthDate=1985-03-15`).
 

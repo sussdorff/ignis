@@ -8,53 +8,15 @@ import {
   type CancelAppointmentResponse,
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
-import { cancelAppointment, createAppointment } from '../lib/aidbox-appointments'
+import {
+  cancelAppointment,
+  createAppointment,
+  getAvailableSlots,
+  getSlotWithPractitioner,
+  updateSlotStatus,
+} from '../lib/aidbox-appointments'
 
 const appointments = new Hono()
-
-const STUB_PRACTITIONER_ID = 'practitioner-1'
-const STUB_PRACTITIONER_DISPLAY = 'Dr. Anna Schmidt'
-const SLOT_DURATION_MINUTES = 30
-const STUB_START_HOUR = 9
-const STUB_START_MINUTE = 0
-const STUB_END_HOUR = 11
-const STUB_END_MINUTE = 30
-
-/** Generate stub slots for a given date (Europe/Berlin). */
-function generateStubSlots(date: string, limit: number): Slot[] {
-  const slots: Slot[] = []
-  let hour = STUB_START_HOUR
-  let minute = STUB_START_MINUTE
-  for (let i = 0; i < limit; i++) {
-    const start = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
-    minute += SLOT_DURATION_MINUTES
-    if (minute >= 60) {
-      minute = 0
-      hour += 1
-    }
-    if (hour > STUB_END_HOUR || (hour === STUB_END_HOUR && minute > STUB_END_MINUTE)) break
-    const end = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
-    slots.push({
-      slotId: `stub-${date}-${i}`,
-      start,
-      end,
-      practitionerId: STUB_PRACTITIONER_ID,
-      practitionerDisplay: STUB_PRACTITIONER_DISPLAY,
-    })
-  }
-  return slots
-}
-
-/** Derive start/end from stub slotId (stub-YYYY-MM-DD-index). */
-function stubSlotTimes(slotId: string): { start: string; end: string } | null {
-  const match = /^stub-(\d{4}-\d{2}-\d{2})-(\d+)$/.exec(slotId)
-  if (!match) return null
-  const [, date, indexStr] = match
-  const index = parseInt(indexStr, 10)
-  const slots = generateStubSlots(date, index + 1)
-  const slot = slots[index]
-  return slot ? { start: slot.start, end: slot.end } : null
-}
 
 /** Today's date in Europe/Berlin (YYYY-MM-DD). */
 function todayBerlin(): string {
@@ -71,13 +33,40 @@ appointments.get('/slots', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { date, urgency, limit } = parsed.data
+  const { date, urgency, practitionerId, limit } = parsed.data
+
+  // For urgent requests, only return slots for today
   if (urgency === 'urgent' && date !== todayBerlin()) {
     return c.json({ slots: [] }, 200)
   }
-  const slots = generateStubSlots(date, limit)
-  const response: SlotsResponse = { slots }
-  return c.json(response, 200)
+
+  try {
+    // Query real slots from Aidbox
+    const availableSlots = await getAvailableSlots({
+      date,
+      practitionerId,
+      limit,
+    })
+
+    // Map to API response format
+    const slots: Slot[] = availableSlots.map((s) => ({
+      slotId: s.slotId,
+      start: s.start,
+      end: s.end,
+      practitionerId: s.practitionerId,
+      practitionerDisplay: s.practitionerDisplay,
+    }))
+
+    const response: SlotsResponse = { slots }
+    return c.json(response, 200)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[appointments/slots] Error fetching slots:', message)
+    return c.json(
+      { error: 'internal', message: 'Failed to fetch available slots' },
+      502
+    )
+  }
 })
 
 // =============================================================================
@@ -99,8 +88,9 @@ appointments.post('/', async (c) => {
 
   const { slotId, patientId, practitionerId, type, reason } = parsed.data
 
-  const times = stubSlotTimes(slotId)
-  if (!times) {
+  // Get real slot data from Aidbox
+  const slotInfo = await getSlotWithPractitioner(slotId)
+  if (!slotInfo) {
     return c.json(
       { error: 'not_found', resource: 'slot', slotId },
       404
@@ -115,19 +105,30 @@ appointments.post('/', async (c) => {
     )
   }
 
-  const pracId = practitionerId ?? STUB_PRACTITIONER_ID
+  // Use practitioner from slot, or override if provided in request
+  const pracId = practitionerId ?? slotInfo.practitionerId ?? 'unknown'
+  const pracDisplay = slotInfo.practitionerDisplay
+
   const result = await createAppointment({
-    start: times.start,
-    end: times.end,
+    start: slotInfo.start,
+    end: slotInfo.end,
     patientId,
     practitionerId: pracId,
-    practitionerDisplay: STUB_PRACTITIONER_DISPLAY,
+    practitionerDisplay: pracDisplay,
     type: type ?? 'routine',
     reason,
   })
 
   if (result.ok === false && result.code === 'slot_unavailable') {
     return c.json({ error: 'slot_unavailable' }, 409)
+  }
+
+  // Mark the slot as busy after successful booking
+  try {
+    await updateSlotStatus(slotId, 'busy')
+  } catch (err) {
+    console.error('[appointments/book] Failed to update slot status:', err)
+    // Continue anyway - appointment is booked, slot status is non-critical
   }
 
   const appt = result.appointment
@@ -142,9 +143,9 @@ appointments.post('/', async (c) => {
       description: appt.description,
       appointmentType: appt.appointmentType,
     },
-    start: times.start,
-    end: times.end,
-    confirmationMessage: `Ihre Termin wurde für ${times.start} bestätigt.`,
+    start: slotInfo.start,
+    end: slotInfo.end,
+    confirmationMessage: `Ihr Termin wurde für ${slotInfo.start} bestätigt.`,
   }
   return c.json(response, 201)
 })

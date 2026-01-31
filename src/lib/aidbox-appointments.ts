@@ -13,10 +13,36 @@ export interface FHIRAppointment {
   [key: string]: unknown
 }
 
+/** FHIR Slot resource. */
+export interface FHIRSlot {
+  resourceType: 'Slot'
+  id?: string
+  status?: 'busy' | 'free' | 'busy-unavailable' | 'busy-tentative' | 'entered-in-error'
+  start?: string
+  end?: string
+  schedule?: { reference?: string }
+  [key: string]: unknown
+}
+
+/** FHIR Schedule resource. */
+export interface FHIRSchedule {
+  resourceType: 'Schedule'
+  id?: string
+  actor?: Array<{ reference?: string; display?: string }>
+  active?: boolean
+  [key: string]: unknown
+}
+
 /** FHIR Bundle (searchset) from GET /Appointment?date=... */
 interface AppointmentBundle {
   resourceType: 'Bundle'
   entry?: Array<{ resource?: FHIRAppointment }>
+}
+
+/** FHIR Bundle (searchset) from GET /Slot?... */
+interface SlotBundle {
+  resourceType: 'Bundle'
+  entry?: Array<{ resource?: FHIRSlot | FHIRSchedule; search?: { mode?: 'match' | 'include' } }>
 }
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
@@ -129,4 +155,169 @@ export async function createAppointment(params: {
   }
   const created = (await fhirClient.post('Appointment', body)) as FHIRAppointment
   return { ok: true, appointment: created }
+}
+
+// =============================================================================
+// Slot operations (for real FHIR Slot/Schedule data)
+// =============================================================================
+
+/** Slot with resolved practitioner info from Schedule. */
+export interface SlotWithPractitioner {
+  slotId: string
+  start: string
+  end: string
+  practitionerId?: string
+  practitionerDisplay?: string
+}
+
+/**
+ * Get a Slot by ID from Aidbox.
+ * Returns null if not found (404).
+ */
+export async function getSlotById(id: string): Promise<FHIRSlot | null> {
+  try {
+    const slot = (await fhirClient.get(`Slot/${id}`)) as FHIRSlot
+    return slot?.resourceType === 'Slot' ? slot : null
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('404') || message.includes('Not Found')) return null
+    throw err
+  }
+}
+
+/**
+ * Get a Schedule by ID from Aidbox.
+ * Returns null if not found (404).
+ */
+export async function getScheduleById(id: string): Promise<FHIRSchedule | null> {
+  try {
+    const schedule = (await fhirClient.get(`Schedule/${id}`)) as FHIRSchedule
+    return schedule?.resourceType === 'Schedule' ? schedule : null
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('404') || message.includes('Not Found')) return null
+    throw err
+  }
+}
+
+/**
+ * Update a Slot's status in Aidbox (e.g., from 'free' to 'busy').
+ */
+export async function updateSlotStatus(
+  slotId: string,
+  status: 'busy' | 'free' | 'busy-unavailable' | 'busy-tentative'
+): Promise<FHIRSlot | null> {
+  const slot = await getSlotById(slotId)
+  if (!slot) return null
+  const updated: FHIRSlot = { ...slot, status }
+  const result = (await fhirClient.put(`Slot/${slotId}`, updated)) as FHIRSlot
+  return result
+}
+
+/**
+ * Query available (free) slots for a given date.
+ * Optionally filter by practitionerId.
+ * Returns slots with practitioner info resolved from Schedule.
+ */
+export async function getAvailableSlots(params: {
+  date: string // YYYY-MM-DD
+  practitionerId?: string
+  limit?: number
+}): Promise<SlotWithPractitioner[]> {
+  const { date, practitionerId, limit = 10 } = params
+
+  // Build search query
+  // FHIR Slot search by start date and status=free
+  // Use _include to get the Schedule in the same request
+  const searchParams = new URLSearchParams({
+    status: 'free',
+    _count: String(limit * 3), // Fetch more to account for filtering
+    _include: 'Slot:schedule',
+    _sort: 'start',
+  })
+
+  // Search by date range (slots starting on the given date)
+  // Using ge (>=) and lt (<) for the date range
+  searchParams.append('start', `ge${date}T00:00:00`)
+  searchParams.append('start', `lt${date}T23:59:59`)
+
+  const bundle = (await fhirClient.get(`Slot?${searchParams.toString()}`)) as SlotBundle
+
+  // Separate slots and schedules from the bundle
+  const slots: FHIRSlot[] = []
+  const schedules = new Map<string, FHIRSchedule>()
+
+  for (const entry of bundle.entry ?? []) {
+    if (entry.resource?.resourceType === 'Slot' && entry.search?.mode === 'match') {
+      slots.push(entry.resource as FHIRSlot)
+    } else if (entry.resource?.resourceType === 'Schedule' && entry.search?.mode === 'include') {
+      const schedule = entry.resource as FHIRSchedule
+      if (schedule.id) {
+        schedules.set(`Schedule/${schedule.id}`, schedule)
+      }
+    }
+  }
+
+  // Map slots to SlotWithPractitioner, resolving practitioner info
+  const results: SlotWithPractitioner[] = []
+  for (const slot of slots) {
+    if (!slot.id || !slot.start || !slot.end) continue
+
+    // Get practitioner info from the referenced Schedule
+    const scheduleRef = slot.schedule?.reference
+    const schedule = scheduleRef ? schedules.get(scheduleRef) : undefined
+    const actor = schedule?.actor?.[0]
+    const practitionerRef = actor?.reference // e.g., "Practitioner/practitioner-1"
+    const practitionerIdFromRef = practitionerRef?.replace('Practitioner/', '')
+
+    // Filter by practitionerId if specified
+    if (practitionerId && practitionerIdFromRef !== practitionerId) {
+      continue
+    }
+
+    results.push({
+      slotId: slot.id,
+      start: slot.start,
+      end: slot.end,
+      practitionerId: practitionerIdFromRef,
+      practitionerDisplay: actor?.display,
+    })
+
+    // Stop once we have enough results
+    if (results.length >= limit) break
+  }
+
+  return results
+}
+
+/**
+ * Get slot details with practitioner info resolved.
+ * Used when booking to get the full slot info.
+ */
+export async function getSlotWithPractitioner(slotId: string): Promise<SlotWithPractitioner | null> {
+  const slot = await getSlotById(slotId)
+  if (!slot || !slot.start || !slot.end) return null
+
+  // Get practitioner info from the referenced Schedule
+  let practitionerId: string | undefined
+  let practitionerDisplay: string | undefined
+
+  const scheduleRef = slot.schedule?.reference
+  if (scheduleRef) {
+    const scheduleId = scheduleRef.replace('Schedule/', '')
+    const schedule = await getScheduleById(scheduleId)
+    if (schedule) {
+      const actor = schedule.actor?.[0]
+      practitionerId = actor?.reference?.replace('Practitioner/', '')
+      practitionerDisplay = actor?.display
+    }
+  }
+
+  return {
+    slotId: slot.id!,
+    start: slot.start,
+    end: slot.end,
+    practitionerId,
+    practitionerDisplay,
+  }
 }
