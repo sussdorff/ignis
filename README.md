@@ -281,6 +281,45 @@ ssh hackathon@167.235.236.238
 
 All services run in Docker and are proxied through nginx.
 
+### Service Architecture
+
+The **Ignis App** runs as a single Docker container that includes both:
+- **Backend**: Bun + Hono server (port 3000)
+  - Handles `/api/*` routes
+  - Serves built frontend static files
+- **Frontend**: React app (built as static files)
+  - Built during Docker image creation
+  - Served by the Bun backend
+
+```
+Docker Container "app"
+├── Bun Backend (Hono) - port 3000
+│   ├── Handles /api routes
+│   └── Serves built frontend static files
+└── Frontend (React) - built as static files in /frontend/dist/
+```
+
+### Managing Services
+
+```bash
+# Check all services
+docker compose ps
+
+# Check specific service
+docker compose ps app
+
+# View logs
+docker compose logs -f         # All services
+docker compose logs app -f     # Just the app
+
+# Restart a service
+docker compose restart app
+docker compose restart nginx
+
+# Rebuild and restart
+docker compose up -d --build app
+```
+
 ## Project Structure
 
 ```
