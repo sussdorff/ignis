@@ -1,19 +1,18 @@
-version: '3.8'
-
 services:
-  # PostgreSQL for Aidbox
+  # PostgreSQL for Aidbox (using standard postgres image)
   aidbox-db:
-    image: healthsamurai/aidboxdb:16.1
+    image: postgres:16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aidbox
     volumes:
-      - aidbox_pg_data:/data
+      - aidbox_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aidbox"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   # Aidbox FHIR Server
   aidbox:
@@ -22,8 +21,7 @@ services:
       aidbox-db:
         condition: service_healthy
     environment:
-      AIDBOX_LICENSE: ${AIDBOX_LICENSE_ID}
-      AIDBOX_LICENSE_KEY: ${AIDBOX_LICENSE_KEY}
+      AIDBOX_LICENSE: ${AIDBOX_LICENSE_KEY}
       AIDBOX_ADMIN_ID: ${AIDBOX_ADMIN_ID:-admin}
       AIDBOX_ADMIN_PASSWORD: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
       AIDBOX_CLIENT_ID: ${AIDBOX_ADMIN_ID:-admin}
@@ -33,7 +31,7 @@ services:
       AIDBOX_FHIR_VERSION: 4.0.1
       PGHOST: aidbox-db
       PGPORT: 5432
-      PGDATABASE: postgres
+      PGDATABASE: aidbox
       PGUSER: postgres
       PGPASSWORD: postgres
     ports:
@@ -44,8 +42,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 20
+      start_period: 60s
 
   # n8n Workflow Automation
   n8n:
