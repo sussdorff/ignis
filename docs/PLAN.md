@@ -5,7 +5,7 @@
 
 ## Todos
 
-- [ ] Initialize Next.js project with TypeScript, Tailwind, and shadcn/ui components
+- [ ] Initialize Bun project with Hono API and Vite React frontend with Tailwind and shadcn/ui
 - [ ] Create Aidbox sandbox instance and configure FHIR resources (Patient, Appointment, Practitioner, Schedule)
 - [ ] Set up 11 Labs Conversational AI agent with patient intake conversation flow (German language primary)
 - [ ] Build Aidbox API client with Patient and Appointment CRUD operations
@@ -40,7 +40,7 @@ flowchart TB
     end
     
     subgraph Backend [Backend Services]
-        NextAPI[Next.js API Routes]
+        BunAPI[Bun + Hono API]
         Aidbox[Aidbox FHIR Server]
     end
     
@@ -56,10 +56,10 @@ flowchart TB
     end
     
     Phone --> ElevenLabs
-    ElevenLabs -->|"Tools (real-time)"| NextAPI
+    ElevenLabs -->|"Tools (real-time)"| BunAPI
     ElevenLabs -->|"Post-call webhook"| OpenClaw
-    WebPortal --> NextAPI
-    NextAPI --> Aidbox
+    WebPortal --> BunAPI
+    BunAPI --> Aidbox
     OpenClaw --> Gemini
     OpenClaw --> Aidbox
     OpenClaw -->|"Send verification SMS"| Phone
@@ -73,7 +73,7 @@ flowchart TB
 | Component | Responsibility | Timing |
 |-----------|----------------|--------|
 | **ElevenLabs** | Voice conversation, triage logic, patient lookup, appointment booking | Real-time (during call) |
-| **Next.js API Routes** | HTTP endpoints for ElevenLabs tools, serve web UIs | Real-time |
+| **Bun + Hono API** | HTTP endpoints for ElevenLabs tools, serve React frontend | Real-time |
 | **Aidbox FHIR** | Store patients, appointments, practitioner schedules | Persistent storage |
 | **OpenClaw** | Send verification SMS, alert staff via WhatsApp, analyze calls, schedule follow-ups | Background (after call) |
 | **Gemini** | Intent classification, confidence scoring for AI flags | Called by OpenClaw |
@@ -82,8 +82,8 @@ flowchart TB
 
 1. **During Call (Real-time path):**
    - Patient calls → ElevenLabs answers
-   - ElevenLabs uses Tools to call Next.js APIs (patient lookup, book appointment)
-   - Next.js APIs read/write to Aidbox
+   - ElevenLabs uses Tools to call Bun + Hono APIs (patient lookup, book appointment)
+   - Bun + Hono APIs read/write to Aidbox
 
 2. **After Call (Background path):**
    - ElevenLabs sends post-call webhook to OpenClaw
@@ -277,7 +277,7 @@ Given time constraints, focus on these **demo-ready** features:
 - Implement 3-tier triage logic in ElevenLabs system prompt
 - **Implement always-on emergency detection** - runs continuously, can interrupt at any point
 - **Implement human agent transfer** - emergency cases transfer to human, not direct 112 redirect
-- Configure ElevenLabs Tools to call Next.js APIs (patient lookup, appointment booking)
+- Configure ElevenLabs Tools to call Bun + Hono APIs (patient lookup, appointment booking)
 - Integrate with Twilio for phone number
 
 **Background (OpenClaw):**
@@ -289,13 +289,13 @@ Given time constraints, focus on these **demo-ready** features:
 
 **Key files to create:**
 
-- `lib/elevenlabs/agent-config.ts` - Voice agent configuration with German prompts
-- `lib/elevenlabs/tools-config.ts` - ElevenLabs Tools pointing to Next.js APIs
-- `lib/elevenlabs/system-prompt.md` - Triage logic and emergency detection rules
-- `lib/openclaw/post-call-handler.ts` - Handle post-call webhook
-- `lib/openclaw/verification-sender.ts` - Send verification SMS
-- `lib/openclaw/staff-alerter.ts` - WhatsApp/Telegram alerts
-- `lib/ai/confidence-scorer.ts` - Gemini-based AI flag generation
+- `src/lib/elevenlabs/agent-config.ts` - Voice agent configuration with German prompts
+- `src/lib/elevenlabs/tools-config.ts` - ElevenLabs Tools pointing to Bun + Hono APIs
+- `src/lib/elevenlabs/system-prompt.md` - Triage logic and emergency detection rules
+- `src/lib/openclaw/post-call-handler.ts` - Handle post-call webhook
+- `src/lib/openclaw/verification-sender.ts` - Send verification SMS
+- `src/lib/openclaw/staff-alerter.ts` - WhatsApp/Telegram alerts
+- `src/lib/ai/confidence-scorer.ts` - Gemini-based AI flag generation
 
 ### Person 2: FHIR Backend Lead
 
@@ -312,21 +312,19 @@ Given time constraints, focus on these **demo-ready** features:
 
 **Key files to create:**
 
-- `lib/fhir/aidbox-client.ts` - Aidbox API client
-- `lib/fhir/resources/` - FHIR resource types
-- `lib/fhir/flags.ts` - Flag types and utilities
-- `lib/verify/token-generator.ts` - Secure token generation
-- `lib/verify/send-link.ts` - SMS/email link sending
-- `app/api/patients/route.ts` - Patient CRUD
-- `app/api/patients/lookup/route.ts` - Search by phone/DOB for returning patients
-- `app/api/appointments/route.ts` - Appointment booking
-- `app/api/queue/urgent/route.ts` - Urgent queue management
-- `app/api/verify/[token]/route.ts` - Token validation API
-- `app/api/verify/submit/route.ts` - Submit verified/edited patient data
+- `src/lib/fhir/aidbox-client.ts` - Aidbox API client
+- `src/lib/fhir/resources/` - FHIR resource types
+- `src/lib/fhir/flags.ts` - Flag types and utilities
+- `src/lib/verify/token-generator.ts` - Secure token generation
+- `src/lib/verify/send-link.ts` - SMS/email link sending
+- `src/api/patients.ts` - Patient CRUD + lookup by phone/DOB
+- `src/api/appointments.ts` - Appointment booking
+- `src/api/queue.ts` - Urgent queue management
+- `src/api/verify.ts` - Token validation + submit verified data
 
 ### Person 3: Praxis Dashboard UI
 
-**Focus:** Next.js + Tailwind (Praxis-facing)
+**Focus:** Vite + React + Tailwind (Praxis-facing)
 
 - Build real-time dashboard showing incoming patients
 - Appointment calendar view (Terminkalender)
@@ -338,19 +336,18 @@ Given time constraints, focus on these **demo-ready** features:
 
 **Key pages to create:**
 
-- `app/praxis/dashboard/page.tsx` - Main dashboard with emergency alert banner
-- `app/praxis/termine/page.tsx` - Calendar view (Terminkalender)
-- `app/praxis/dringend/page.tsx` - Urgent queue
-- `app/praxis/notfall/page.tsx` - Emergency transfers waiting for human agent
-- `app/praxis/patienten/[id]/page.tsx` - Patient details with **AI flags highlighted**
-- `components/praxis/EmergencyAlert.tsx` - Flashing/audio alert for emergency transfers
-- `components/praxis/PatientFlags.tsx` - Display all AI flags for a patient
-- `components/praxis/FlagBadge.tsx` - Individual flag badge (VERIFY_IDENTITY, etc.)
-- `components/praxis/` - Other reusable praxis components
+- `frontend/src/pages/praxis/Dashboard.tsx` - Main dashboard with emergency alert banner
+- `frontend/src/pages/praxis/Termine.tsx` - Calendar view (Terminkalender)
+- `frontend/src/pages/praxis/Dringend.tsx` - Urgent queue
+- `frontend/src/pages/praxis/Notfall.tsx` - Emergency transfers waiting for human agent
+- `frontend/src/pages/praxis/PatientDetail.tsx` - Patient details with **AI flags highlighted**
+- `frontend/src/components/praxis/EmergencyAlert.tsx` - Flashing/audio alert for emergency transfers
+- `frontend/src/components/praxis/PatientFlags.tsx` - Display all AI flags for a patient
+- `frontend/src/components/praxis/FlagBadge.tsx` - Individual flag badge (VERIFY_IDENTITY, etc.)
 
 ### Person 4: Patient Interface UI
 
-**Focus:** Next.js + Tailwind (Patient-facing)
+**Focus:** Vite + React + Tailwind (Patient-facing)
 
 - Patient intake form (web fallback)
 - **Patient verification portal** - Secure page to review/edit AI-filled data
@@ -361,13 +358,12 @@ Given time constraints, focus on these **demo-ready** features:
 
 **Key pages to create:**
 
-- `app/patient/intake/page.tsx` - Intake form
-- `app/patient/book/page.tsx` - Booking interface
-- `app/patient/confirmation/page.tsx` - Confirmation
-- `app/patient/verify/[token]/page.tsx` - **Verification portal with editable form**
-- `components/patient/VerificationForm.tsx` - Editable form showing AI data
-- `components/patient/FlaggedField.tsx` - Highlighted fields AI was uncertain about
-- `components/patient/` - Other reusable patient components
+- `frontend/src/pages/patient/Intake.tsx` - Intake form
+- `frontend/src/pages/patient/Book.tsx` - Booking interface
+- `frontend/src/pages/patient/Confirmation.tsx` - Confirmation
+- `frontend/src/pages/patient/Verify.tsx` - **Verification portal with editable form** (token in URL param)
+- `frontend/src/components/patient/VerificationForm.tsx` - Editable form showing AI data
+- `frontend/src/components/patient/FlaggedField.tsx` - Highlighted fields AI was uncertain about
 
 ### Person 5: Demo/Pitch/Integration Lead
 
@@ -391,8 +387,8 @@ Given time constraints, focus on these **demo-ready** features:
 
 | Layer | Technology | Purpose | When Used |
 |-------|------------|---------|-----------|
-| Frontend | Next.js 14 + Tailwind + shadcn/ui | Praxis dashboard + Patient portal | Web access |
-| Backend | Next.js API Routes | HTTP endpoints for ElevenLabs tools | During call (real-time) |
+| Frontend | Vite + React + Tailwind + shadcn/ui | Praxis dashboard + Patient portal | Web access |
+| Backend | Bun + Hono | API endpoints for ElevenLabs tools, webhooks | During call (real-time) |
 | FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data storage | Always |
 | Voice AI | 11 Labs Conversational AI | Phone conversation, triage, booking | During call (real-time) |
 | Phone | Twilio (via 11 Labs) | Inbound/outbound calls | During call |
@@ -405,61 +401,68 @@ Given time constraints, focus on these **demo-ready** features:
 
 ```
 ignis/
-├── app/
-│   ├── api/
-│   │   ├── patients/
-│   │   │   ├── route.ts          # Patient CRUD
-│   │   │   └── lookup/route.ts   # Search by phone/DOB
-│   │   ├── appointments/route.ts
-│   │   ├── queue/urgent/route.ts # Urgent queue management
-│   │   ├── verify/
-│   │   │   ├── [token]/route.ts  # Token validation
-│   │   │   └── submit/route.ts   # Submit verified data
-│   │   └── voice/webhook/route.ts
-│   ├── praxis/                   # Praxis (clinic) dashboard
-│   │   ├── dashboard/page.tsx
-│   │   ├── termine/page.tsx      # Appointments calendar
-│   │   ├── dringend/page.tsx     # Urgent queue
-│   │   ├── notfall/page.tsx      # Emergency transfers
-│   │   └── patienten/[id]/page.tsx  # Patient details with flags
-│   ├── patient/                  # Patient-facing UI
-│   │   ├── intake/page.tsx
-│   │   ├── book/page.tsx
-│   │   ├── confirmation/page.tsx
-│   │   └── verify/[token]/page.tsx  # Verification portal
-│   ├── layout.tsx
-│   └── page.tsx (landing)
-├── components/
-│   ├── praxis/
-│   │   ├── EmergencyAlert.tsx
-│   │   ├── PatientFlags.tsx      # Display AI flags
-│   │   └── FlagBadge.tsx         # Individual flag badge
-│   ├── patient/
-│   │   ├── VerificationForm.tsx  # Editable verification form
-│   │   └── FlaggedField.tsx      # Highlighted uncertain fields
-│   └── ui/ (shadcn)
-├── lib/
-│   ├── elevenlabs/
-│   │   ├── agent-config.ts
-│   │   ├── conversation-flow.ts
-│   │   └── emergency-detector.ts
-│   ├── fhir/
-│   │   ├── aidbox-client.ts
-│   │   ├── resources/
-│   │   └── flags.ts              # Flag types and utilities
-│   ├── openclaw/
-│   │   └── patient-intake-agent.ts
-│   ├── ai/
-│   │   ├── triage-classifier.ts
-│   │   └── confidence-scorer.ts  # Assess transcription confidence
-│   └── verify/
-│       ├── token-generator.ts    # Secure token generation
-│       └── send-link.ts          # SMS/email sending
+├── src/                          # Bun + Hono backend
+│   ├── index.ts                  # Hono app entry point
+│   ├── api/                      # Hono API routes
+│   │   ├── patients.ts           # Patient CRUD + lookup
+│   │   ├── appointments.ts       # Appointment booking
+│   │   ├── queue.ts              # Urgent queue management
+│   │   ├── verify.ts             # Token validation + submit
+│   │   └── voice-webhook.ts      # ElevenLabs webhook handler
+│   └── lib/                      # Shared backend utilities
+│       ├── elevenlabs/
+│       │   ├── agent-config.ts
+│       │   ├── conversation-flow.ts
+│       │   └── emergency-detector.ts
+│       ├── fhir/
+│       │   ├── aidbox-client.ts
+│       │   ├── resources/
+│       │   └── flags.ts          # Flag types and utilities
+│       ├── openclaw/
+│       │   └── patient-intake-agent.ts
+│       ├── ai/
+│       │   ├── triage-classifier.ts
+│       │   └── confidence-scorer.ts
+│       └── verify/
+│           ├── token-generator.ts
+│           └── send-link.ts
+├── frontend/                     # Vite + React frontend
+│   ├── src/
+│   │   ├── main.tsx              # React entry point
+│   │   ├── App.tsx               # Router setup
+│   │   ├── pages/
+│   │   │   ├── praxis/           # Praxis (clinic) dashboard
+│   │   │   │   ├── Dashboard.tsx
+│   │   │   │   ├── Termine.tsx   # Appointments calendar
+│   │   │   │   ├── Dringend.tsx  # Urgent queue
+│   │   │   │   ├── Notfall.tsx   # Emergency transfers
+│   │   │   │   └── PatientDetail.tsx  # Patient details with flags
+│   │   │   ├── patient/          # Patient-facing UI
+│   │   │   │   ├── Intake.tsx
+│   │   │   │   ├── Book.tsx
+│   │   │   │   ├── Confirmation.tsx
+│   │   │   │   └── Verify.tsx    # Verification portal
+│   │   │   └── Landing.tsx
+│   │   └── components/
+│   │       ├── praxis/
+│   │       │   ├── EmergencyAlert.tsx
+│   │       │   ├── PatientFlags.tsx
+│   │       │   └── FlagBadge.tsx
+│   │       ├── patient/
+│   │       │   ├── VerificationForm.tsx
+│   │       │   └── FlaggedField.tsx
+│   │       └── ui/               # shadcn components
+│   ├── index.html
+│   └── vite.config.ts
+├── dist/                         # Built frontend (served by Hono)
 ├── docs/
 │   ├── pitch-deck.md
 │   └── demo-script.md
-└── scripts/
-    └── seed-data.ts              # German demo data
+├── scripts/
+│   └── seed-data.ts              # German demo data
+├── package.json
+├── tsconfig.json
+└── Dockerfile
 ```
 
 ---
@@ -610,34 +613,49 @@ TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
 ## Quick Start Commands
 
 ```bash
-# Initialize project
-npx create-next-app@latest ignis --typescript --tailwind --app --src-dir=false
+# Initialize Bun project
+bun init
 
-# Add dependencies
-npm install @langchain/core @langchain/google-genai @google/generative-ai
-npm install shadcn-ui zod react-hook-form date-fns
-npm install axios # for Aidbox API calls
+# Add backend dependencies
+bun add hono @hono/zod-validator zod
+bun add @google/generative-ai axios date-fns
 
-# Initialize shadcn
-npx shadcn@latest init
-npx shadcn@latest add button card input form calendar
+# Create frontend with Vite + React
+bun create vite frontend --template react-ts
+cd frontend && bun install
+
+# Add Tailwind to frontend
+bun add -D tailwindcss postcss autoprefixer
+bunx tailwindcss init -p
+
+# Add frontend dependencies
+bun add react-router-dom react-hook-form @tanstack/react-query
+
+# Initialize shadcn/ui in frontend
+bunx shadcn@latest init
+bunx shadcn@latest add button card input form calendar
+
+# Return to root
+cd ..
 ```
 
 ---
 
 ## Parallel Workstreams Timeline
 
-| Hour | Person 1 (Voice/AI) | Person 2 (FHIR) | Person 3 (Praxis UI) | Person 4 (Patient UI) | Person 5 (Demo) |
-|------|---------------------|-----------------|----------------------|-----------------------|-----------------|
-| 0-2 | 11 Labs setup (German) | Aidbox sandbox | Project scaffold | Project scaffold | Pitch deck draft |
+| Hour | Person 1 (Voice/AI) | Person 2 (FHIR/Backend) | Person 3 (Praxis UI) | Person 4 (Patient UI) | Person 5 (Demo) |
+|------|---------------------|-------------------------|----------------------|-----------------------|-----------------|
+| 0-2 | 11 Labs setup (German) | Bun + Hono scaffold, Aidbox sandbox | Vite + React scaffold | Vite + React scaffold | Pitch deck draft |
 | 2-4 | Voice prompts + triage | FHIR client + flags | Dashboard layout | Intake form | Demo script (German) |
 | 4-6 | ElevenLabs Tools config | Patient lookup API | Urgent queue UI | Verification portal | Integration testing |
 | 6-8 | Emergency detection | Verification token API | Emergency alert UI | Flagged field UI | Test ElevenLabs flow |
 | 8-10 | OpenClaw setup | Appointment APIs | Patient flags display | Mobile responsive | Seed data (German) |
-| 10-12 | OpenClaw SMS + alerts | Connect all APIs | Calendar + real-time | Confirmation page | End-to-end testing |
+| 10-12 | OpenClaw SMS + alerts | Connect all APIs + static serving | Calendar + real-time | Confirmation page | End-to-end testing |
 | 12+ | Bug fixes + polish | Bug fixes | Polish | Polish | Rehearse demo |
 
 **Person 1 Priority:** Get ElevenLabs working first (hours 0-8), then add OpenClaw for background tasks (hours 8-12).
+
+**Person 2 Note:** Set up Hono to serve the built frontend from `dist/` folder for single-deployment architecture.
 
 ---
 
