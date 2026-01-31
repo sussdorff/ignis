@@ -1,4 +1,16 @@
 services:
+  # Nginx reverse proxy - external access point
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - aidbox
+      - n8n
+    restart: unless-stopped
+
   # PostgreSQL for Aidbox (using standard postgres image)
   aidbox-db:
     image: postgres:16
@@ -14,7 +26,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Aidbox FHIR Server
+  # Aidbox FHIR Server (internal only - accessed via nginx)
   aidbox:
     image: healthsamurai/aidboxone:latest
     depends_on:
@@ -26,7 +38,7 @@ services:
       AIDBOX_ADMIN_PASSWORD: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
       AIDBOX_CLIENT_ID: ${AIDBOX_ADMIN_ID:-admin}
       AIDBOX_CLIENT_SECRET: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
-      AIDBOX_BASE_URL: http://localhost:8080
+      AIDBOX_BASE_URL: http://167.235.236.238/aidbox
       AIDBOX_PORT: 8080
       AIDBOX_FHIR_VERSION: 4.0.1
       PGHOST: aidbox-db
@@ -34,8 +46,8 @@ services:
       PGDATABASE: aidbox
       PGUSER: postgres
       PGPASSWORD: postgres
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     volumes:
       - ./aidbox/seed:/var/aidbox/seed:ro
     healthcheck:
@@ -45,7 +57,7 @@ services:
       retries: 20
       start_period: 60s
 
-  # n8n Workflow Automation
+  # n8n Workflow Automation (internal only - accessed via nginx)
   n8n:
     image: n8nio/n8n:latest
     environment:
@@ -53,8 +65,10 @@ services:
       - N8N_BASIC_AUTH_USER=admin
       - N8N_BASIC_AUTH_PASSWORD=ignis2026
       - GENERIC_TIMEZONE=Europe/Berlin
-    ports:
-      - "5678:5678"
+      - N8N_PATH=/n8n
+      - WEBHOOK_URL=http://167.235.236.238/n8n/
+    expose:
+      - "5678"
     volumes:
       - n8n_data:/home/node/.n8n
 
