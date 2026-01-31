@@ -1,0 +1,214 @@
+#cloud-config
+# Ignis Hackathon Server
+# cx42: 16 vCPU, 32GB RAM
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - git
+  - ufw
+  - tmux
+  - htop
+  - jq
+  - unzip
+  - build-essential
+  - python3-pip
+  - python3-venv
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+
+runcmd:
+  # Firewall
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 8080/tcp   # Aidbox
+  - ufw allow 3000/tcp   # OpenClaw
+  - ufw allow 5678/tcp   # n8n
+  - ufw --force enable
+
+  # Install Docker
+  - curl -fsSL https://get.docker.com | sh
+
+  # Install Docker Compose v2
+  - mkdir -p /usr/local/lib/docker/cli-plugins
+  - curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+  # Install Node.js 22 LTS
+  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  - apt-get install -y nodejs
+
+  # Install Bun
+  - curl -fsSL https://bun.sh/install | bash
+  - ln -s /root/.bun/bin/bun /usr/local/bin/bun
+
+  # Install Claude Code CLI
+  - npm install -g @anthropic-ai/claude-code
+
+  # Create hackathon user with sudo
+  - useradd -m -s /bin/bash -G sudo,docker hackathon
+  - echo "hackathon ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/hackathon
+
+  # Setup SSH for hackathon user
+  - mkdir -p /home/hackathon/.ssh
+  - chmod 700 /home/hackathon/.ssh
+  - cp /root/.ssh/authorized_keys /home/hackathon/.ssh/
+  - chown -R hackathon:hackathon /home/hackathon/.ssh
+
+  # Create project directory
+  - mkdir -p /opt/ignis
+  - chown hackathon:hackathon /opt/ignis
+
+  # Clone ignis repo
+  - git clone https://github.com/sussdorff/ignis.git /opt/ignis || true
+  - chown -R hackathon:hackathon /opt/ignis
+
+  # Install beads CLI for hackathon user
+  - su - hackathon -c "npm install -g beads-cli"
+
+  # Install Gas Town CLI
+  - |
+    GT_VERSION=$(curl -s https://api.github.com/repos/anthropics/claude-code/releases/latest | jq -r .tag_name | tr -d 'v' || echo "0.2.0")
+    curl -L -o /tmp/gastown.tar.gz "https://github.com/steveyegge/gastown/releases/download/v${GT_VERSION}/gastown_${GT_VERSION}_linux_amd64.tar.gz" 2>/dev/null || true
+    tar -xzf /tmp/gastown.tar.gz -C /usr/local/bin 2>/dev/null || true
+    chmod +x /usr/local/bin/gt 2>/dev/null || true
+
+  # Create docker-compose alias
+  - echo 'alias dc="docker compose"' >> /etc/bash.bashrc
+
+write_files:
+  # Docker daemon config
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      }
+
+  # Shared tmux config
+  - path: /etc/tmux.conf
+    content: |
+      set -g mouse on
+      set -g history-limit 50000
+      set -g default-terminal "screen-256color"
+      bind | split-window -h
+      bind - split-window -v
+
+  # Environment template
+  - path: /opt/ignis/.env.example
+    content: |
+      # Ignis Environment Configuration
+      # Copy to .env and fill in values
+
+      # ElevenLabs (Voice) - 3 months Creator tier
+      ELEVENLABS_API_KEY=
+
+      # Hume AI (Alternative Voice) - Creator mode
+      HUME_API_KEY=
+
+      # OpenAI - $50 API credits
+      OPENAI_API_KEY=
+
+      # OpenRouter (for gemma-med)
+      OPENROUTER_API_KEY=
+
+      # LangChain - $50 LangSmith credits
+      LANGCHAIN_API_KEY=
+
+      # Aidbox (FHIR Server)
+      AIDBOX_LICENSE=
+      AIDBOX_CLIENT_ID=
+      AIDBOX_CLIENT_SECRET=
+
+      # OpenClaw messaging
+      OPENCLAW_WHATSAPP_TOKEN=
+      OPENCLAW_TELEGRAM_TOKEN=
+
+  # Docker compose for services
+  - path: /opt/ignis/docker-compose.yaml
+    content: |
+      version: '3.8'
+
+      services:
+        # PostgreSQL for Aidbox
+        postgres:
+          image: postgres:15
+          environment:
+            POSTGRES_DB: aidbox
+            POSTGRES_USER: aidbox
+            POSTGRES_PASSWORD: aidbox
+          volumes:
+            - postgres_data:/var/lib/postgresql/data
+          healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U aidbox"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+        # Aidbox FHIR Server
+        aidbox:
+          image: healthsamurai/aidboxone:latest
+          depends_on:
+            postgres:
+              condition: service_healthy
+          environment:
+            AIDBOX_LICENSE: ${AIDBOX_LICENSE}
+            AIDBOX_CLIENT_ID: ${AIDBOX_CLIENT_ID:-root}
+            AIDBOX_CLIENT_SECRET: ${AIDBOX_CLIENT_SECRET:-secret}
+            AIDBOX_BASE_URL: http://localhost:8080
+            AIDBOX_PORT: 8080
+            PGHOST: postgres
+            PGPORT: 5432
+            PGDATABASE: aidbox
+            PGUSER: aidbox
+            PGPASSWORD: aidbox
+          ports:
+            - "8080:8080"
+
+        # n8n Workflow Automation
+        n8n:
+          image: n8nio/n8n:latest
+          environment:
+            - N8N_BASIC_AUTH_ACTIVE=true
+            - N8N_BASIC_AUTH_USER=admin
+            - N8N_BASIC_AUTH_PASSWORD=ignis2026
+          ports:
+            - "5678:5678"
+          volumes:
+            - n8n_data:/home/node/.n8n
+
+      volumes:
+        postgres_data:
+        n8n_data:
+
+  # MOTD
+  - path: /etc/motd
+    content: |
+
+      🔥 IGNIS HACKATHON SERVER 🔥
+      ════════════════════════════
+
+      Project: /opt/ignis
+      Docs:    /opt/ignis/README.md
+
+      Quick commands:
+        cd /opt/ignis        - Go to project
+        dc up -d             - Start all services
+        dc logs -f           - Follow logs
+        dc ps                - List services
+
+      Services:
+        Aidbox:   http://localhost:8080
+        n8n:      http://localhost:5678 (admin/ignis2026)
+
+      Team tmux:
+        tmux new -s ignis    - Create shared session
+        tmux a -t ignis      - Attach to session
+
