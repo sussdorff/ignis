@@ -1,0 +1,581 @@
+openapi: 3.0.3
+info:
+  title: Ignis Backend Services for ElevenLabs Tools
+  description: |
+    API used by the ElevenLabs Conversational AI agent during real-time patient intake calls.
+    Scope: patient lookup, patient create/update, appointment slots, booking, urgent queue,
+    and emergency transfer. Backend is implemented by Next.js API Routes (or equivalent)
+    and backed by Aidbox FHIR.
+  version: 1.0.0
+  contact:
+    name: Ignis Team
+
+servers:
+  - url: /api
+    description: Relative to app origin (e.g. Next.js)
+
+tags:
+  - name: patients
+    description: Patient lookup and create/update
+  - name: appointments
+    description: Slots and booking
+  - name: queue
+    description: Urgent and emergency queue
+
+paths:
+  /patients/lookup:
+    get:
+      operationId: patient_lookup
+      summary: Patient lookup
+      description: |
+        Find a returning patient by phone and/or date of birth (Geburtsdatum).
+        **When the agent uses it:** After the caller has provided phone and/or DOB
+        (e.g. "Name und Geburtsdatum?" / "Telefonnummer?"). Used to decide returning
+        vs new patient and to pre-fill data.
+        **FHIR:** Aidbox GET /fhir/Patient with telecom and birthdate search.
+      tags:
+        - patients
+      parameters:
+        - name: phone
+          in: query
+          description: E.164 or national format; normalized server-side
+          required: false
+          schema:
+            type: string
+        - name: birthDate
+          in: query
+          description: ISO 8601 date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lookup result (single match or not found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientLookupResponse'
+        '400':
+          description: Missing both phone and birthDate, or invalid format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /patients:
+    post:
+      operationId: patient_create_or_update
+      summary: Patient create or update
+      description: |
+        Create a new Patient or update an existing one with intake data.
+        **When the agent uses it:** New patient after collecting required fields;
+        returning patient after confirming or correcting data.
+        **FHIR:** POST /fhir/Patient (create) or PUT /fhir/Patient/{id} (update).
+      tags:
+        - patients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientCreateOrUpdateRequest'
+      responses:
+        '200':
+          description: Patient updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientCreateOrUpdateResponse'
+        '201':
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientCreateOrUpdateResponse'
+        '400':
+          description: Validation failed (missing required fields, invalid date/phone)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorWithFields'
+        '404':
+          description: Update with id but no such Patient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /appointments/slots:
+    get:
+      operationId: get_available_slots
+      summary: Get available slots
+      description: |
+        Return bookable appointment slots for a given date (and optionally practitioner).
+        **When the agent uses it:** When the caller is ready to book (Regular or Urgent
+        with same-day slot). Agent asks for preferred date, then calls this tool.
+        **FHIR:** Slot resources or derived from Schedule + existing Appointments.
+      tags:
+        - appointments
+      parameters:
+        - name: date
+          in: query
+          description: ISO 8601 date (YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: practitionerId
+          in: query
+          description: FHIR Practitioner id; if omitted, all practitioners (or default)
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Max slots to return (default 10)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: List of available slots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotsResponse'
+        '400':
+          description: Invalid date or limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /appointments:
+    post:
+      operationId: book_appointment
+      summary: Book appointment
+      description: |
+        Create an Appointment for a chosen slot and patient.
+        **When the agent uses it:** After the patient has chosen a slot from the
+        offered times. Agent confirms and calls this tool, then repeats confirmation.
+        **FHIR:** POST /fhir/Appointment; update Slot status to busy.
+      tags:
+        - appointments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookAppointmentRequest'
+      responses:
+        '201':
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookAppointmentResponse'
+        '400':
+          description: Validation failed (e.g. missing slotId or patientId)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: slotId or patientId not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundErrorWithResource'
+        '409':
+          description: Slot no longer available (double-book)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotUnavailableError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /queue/urgent:
+    post:
+      operationId: add_to_urgent_queue
+      summary: Add to urgent queue
+      description: |
+        Add a patient to the same-day urgent queue when triage is Urgent but no
+        same-day slot is available (or for urgent callback).
+        **When the agent uses it:** When triage is Urgent and no same-day slots
+        or practice policy is to add to queue for callback.
+        **FHIR:** List/Task or custom resource for urgent worklist.
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToUrgentQueueRequest'
+      responses:
+        '201':
+          description: Patient added to urgent queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddToUrgentQueueResponse'
+        '400':
+          description: Missing or invalid patientId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Patient not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+  /queue/emergency:
+    post:
+      operationId: register_emergency_transfer
+      summary: Register emergency transfer
+      description: |
+        Record that an emergency was detected and the call is being transferred
+        to a human agent (for dashboard and alerting).
+        **When the agent uses it:** As soon as emergency detection triggers.
+        Agent calls this tool to log the event, then performs transfer.
+        **FHIR:** Task or custom resource for emergency-transfer record.
+      tags:
+        - queue
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterEmergencyRequest'
+      responses:
+        '201':
+          description: Emergency transfer registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterEmergencyResponse'
+        '500':
+          description: Backend or Aidbox error (agent should still proceed with transfer)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+components:
+  schemas:
+    # --- Patient lookup ---
+    PatientLookupResponse:
+      type: object
+      required:
+        - found
+      properties:
+        patient:
+          nullable: true
+          description: FHIR R4 Patient resource if exactly one match; null otherwise
+          type: object
+        found:
+          type: boolean
+          description: true if a single patient was found, false if none or ambiguous
+
+    # --- Patient create/update ---
+    PatientCreateOrUpdateRequest:
+      type: object
+      required:
+        - family
+        - given
+        - birthDate
+        - phone
+      properties:
+        id:
+          type: string
+          description: If present, update existing Patient; else create
+        family:
+          type: string
+          description: Family name (Nachname)
+        given:
+          type: string
+          description: Given name(s) (Vorname)
+        birthDate:
+          type: string
+          format: date
+          description: ISO 8601 date (YYYY-MM-DD)
+        phone:
+          type: string
+          description: Primary phone (mobile preferred)
+        email:
+          type: string
+          format: email
+        gender:
+          type: string
+          enum:
+            - male
+            - female
+            - other
+            - unknown
+        address:
+          $ref: '#/components/schemas/Address'
+
+    PatientCreateOrUpdateResponse:
+      type: object
+      required:
+        - patient
+        - created
+      properties:
+        patient:
+          type: object
+          description: FHIR R4 Patient resource as stored
+        created:
+          type: boolean
+          description: true if new Patient was created, false if updated
+
+    Address:
+      type: object
+      properties:
+        line:
+          type: array
+          items:
+            type: string
+        city:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+
+    # --- Slots ---
+    Slot:
+      type: object
+      required:
+        - slotId
+        - start
+        - end
+      properties:
+        slotId:
+          type: string
+          description: Id to use in book_appointment request
+        start:
+          type: string
+          format: date-time
+          description: ISO 8601 with timezone (e.g. Europe/Berlin)
+        end:
+          type: string
+          format: date-time
+        practitionerId:
+          type: string
+        practitionerDisplay:
+          type: string
+
+    SlotsResponse:
+      type: object
+      required:
+        - slots
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
+
+    # --- Book appointment ---
+    BookAppointmentRequest:
+      type: object
+      required:
+        - slotId
+        - patientId
+      properties:
+        slotId:
+          type: string
+          description: Id from get_available_slots
+        patientId:
+          type: string
+          description: FHIR Patient id
+        practitionerId:
+          type: string
+        type:
+          type: string
+          enum:
+            - routine
+            - urgent
+          description: Maps to appointmentType
+        reason:
+          type: string
+          description: Reason or description (e.g. Impfung)
+
+    BookAppointmentResponse:
+      type: object
+      required:
+        - appointment
+        - start
+        - end
+      properties:
+        appointment:
+          type: object
+          description: FHIR R4 Appointment resource
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        confirmationMessage:
+          type: string
+          description: Optional pre-written confirmation text for the agent
+
+    # --- Urgent queue ---
+    AddToUrgentQueueRequest:
+      type: object
+      required:
+        - patientId
+      properties:
+        patientId:
+          type: string
+          description: FHIR Patient id
+        reason:
+          type: string
+          description: Brief reason (e.g. post-op bleeding)
+        phone:
+          type: string
+          description: Callback number
+
+    AddToUrgentQueueResponse:
+      type: object
+      required:
+        - queueEntryId
+      properties:
+        queueEntryId:
+          type: string
+        position:
+          type: integer
+          description: Queue order
+        message:
+          type: string
+          description: Optional wording for the agent
+
+    # --- Emergency transfer ---
+    RegisterEmergencyRequest:
+      type: object
+      properties:
+        patientId:
+          type: string
+          description: FHIR Patient id if known
+        phone:
+          type: string
+          description: Caller phone (e.g. from Twilio)
+        reason:
+          type: string
+          description: Short reason or keyword (e.g. Brustschmerzen)
+
+    RegisterEmergencyResponse:
+      type: object
+      required:
+        - transferId
+      properties:
+        transferId:
+          type: string
+        message:
+          type: string
+          description: Optional wording for the agent
+
+    # --- Common errors ---
+    ValidationError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: validation_failed
+        message:
+          type: string
+
+    ValidationErrorWithFields:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: validation_failed
+        message:
+          type: string
+        fields:
+          type: array
+          items:
+            type: string
+          description: List of invalid field names
+
+    NotFoundError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: not_found
+
+    NotFoundErrorWithResource:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: not_found
+        resource:
+          type: string
+          description: e.g. slot, patient
+
+    SlotUnavailableError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: slot_unavailable
+
+    InternalError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: internal
+        message:
+          type: string
