@@ -90,6 +90,47 @@ flowchart TB
 | NLU | Gemini |
 | Orchestration | LangChain |
 
+## Quick Start
+
+### 1. Get Aidbox License (Free for Development)
+
+1. Go to [https://aidbox.app](https://aidbox.app) and create an account
+2. After login, click on your **project name** in the sidebar
+3. Click **Assets** from the menu
+4. Click **New Aidbox** (upper right)
+5. Configure:
+   - **License type**: Dev
+   - **License name**: ignis-hackathon
+   - **Goal**: Development
+   - **Hosting**: Self-hosted
+6. Click **Create**
+7. Copy the `AIDBOX_LICENSE_ID` and `AIDBOX_LICENSE_KEY` from the created license
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env and add your Aidbox keys:
+# AIDBOX_LICENSE_ID=<your-license-id>
+# AIDBOX_LICENSE_KEY=<your-license-key>
+```
+
+### 3. Start Services
+
+```bash
+./infra/setup-aidbox.sh
+```
+
+This will:
+- Start PostgreSQL and Aidbox containers
+- Wait for health checks
+- Load demo FHIR data (patients, practitioners, appointments)
+
+### 4. Verify
+
+- Aidbox UI: http://localhost:8080 (admin/ignis2026)
+- n8n Workflows: http://localhost:5678 (admin/ignis2026)
+
 ## Infrastructure
 
 See `infra/` directory for server provisioning:
@@ -101,6 +142,9 @@ See `infra/` directory for server provisioning:
 # Setup after provisioning
 ./infra/setup-remote.sh <server-ip>
 
+# Setup Aidbox with demo data
+./infra/setup-aidbox.sh
+
 # Add team member SSH keys
 ./infra/user-setup.sh <server-ip>
 
@@ -111,14 +155,16 @@ See `infra/` directory for server provisioning:
 ## Server Access
 
 ```bash
-ssh hackathon@<server-ip>
+ssh hackathon@167.235.236.238
 ```
 
 ## Services
 
-- **Aidbox** (FHIR Server): port 8080
-- **OpenClaw** (AI Agent): port 3000
-- **n8n** (Workflows): port 5678
+| Service | Port | Credentials |
+|---------|------|-------------|
+| Aidbox (FHIR Server) | 8080 | admin / ignis2026 |
+| n8n (Workflows) | 5678 | admin / ignis2026 |
+| OpenClaw (AI Agent) | 3000 | - |
 
 ## Project Structure
 
