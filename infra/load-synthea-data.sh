@@ -61,9 +61,10 @@ log_warn() {
 test_fhir_connection() {
     log_info "Testing FHIR server connection at $FHIR_BASE_URL..."
 
+    local HTTP_CODE
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
         -u "${FHIR_USER}:${FHIR_PASS}" \
-        "${FHIR_BASE_URL}/metadata" 2>/dev/null || echo "000")
+        "${FHIR_BASE_URL}/metadata" 2>/dev/null) || HTTP_CODE="000"
 
     if [[ "$HTTP_CODE" == "200" ]]; then
         log_success "FHIR server is accessible"
