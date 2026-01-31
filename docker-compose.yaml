@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for Aidbox
+  aidbox-db:
+    image: healthsamurai/aidboxdb:16.1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - aidbox_pg_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aidbox FHIR Server
+  aidbox:
+    image: healthsamurai/aidboxone:latest
+    depends_on:
+      aidbox-db:
+        condition: service_healthy
+    environment:
+      AIDBOX_LICENSE: ${AIDBOX_LICENSE_ID}
+      AIDBOX_LICENSE_KEY: ${AIDBOX_LICENSE_KEY}
+      AIDBOX_ADMIN_ID: ${AIDBOX_ADMIN_ID:-admin}
+      AIDBOX_ADMIN_PASSWORD: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
+      AIDBOX_CLIENT_ID: ${AIDBOX_ADMIN_ID:-admin}
+      AIDBOX_CLIENT_SECRET: ${AIDBOX_ADMIN_PASSWORD:-ignis2026}
+      AIDBOX_BASE_URL: http://localhost:8080
+      AIDBOX_PORT: 8080
+      AIDBOX_FHIR_VERSION: 4.0.1
+      PGHOST: aidbox-db
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./aidbox/seed:/var/aidbox/seed:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=ignis2026
+      - GENERIC_TIMEZONE=Europe/Berlin
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  aidbox_pg_data:
+  n8n_data:
