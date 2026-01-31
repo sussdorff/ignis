@@ -1,0 +1,636 @@
+# Patient Intake AI System - Hackathon Plan
+
+> **Project:** Ignis  
+> **Overview:** Build an AI-powered patient intake system for German medical practices (Praxen) with voice interaction via 11 Labs, FHIR backend on Aidbox, and OpenClaw agent orchestration. Features 3-tier triage (Emergency/Urgent/Regular), returning patient lookup, and EU-expandable architecture.
+
+## Todos
+
+- [ ] Initialize Next.js project with TypeScript, Tailwind, and shadcn/ui components
+- [ ] Create Aidbox sandbox instance and configure FHIR resources (Patient, Appointment, Practitioner, Schedule)
+- [ ] Set up 11 Labs Conversational AI agent with patient intake conversation flow (German language primary)
+- [ ] Build Aidbox API client with Patient and Appointment CRUD operations
+- [ ] Implement patient lookup by phone/DOB with pre-fill for returning patients
+- [ ] Build 3-tier triage logic (Emergency->human transfer, Urgent->same-day queue, Regular->standard booking)
+- [ ] Implement always-on emergency detection that can interrupt conversation at any point and transfer to human
+- [ ] Build patient verification portal with secure token-based access for reviewing/editing AI-filled data
+- [ ] Implement AI flagging system for uncertain/important fields that doctor should verify during appointment
+- [ ] Create clinic dashboard with real-time patient queue, urgent queue, and appointment calendar
+- [ ] Build patient intake form and appointment booking interface
+- [ ] Connect 11 Labs voice agent to backend APIs via webhooks
+- [ ] Create realistic German demo seed data (Ärzte, schedules, sample patients)
+- [ ] Complete pitch deck with German/EU market focus, problem, solution, demo, and monetization
+- [ ] End-to-end demo rehearsal and backup video recording
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph PatientInterface [Patient Interface]
+        Phone[Phone Call via 11Labs]
+        WebPortal[Patient Web Portal]
+    end
+    
+    subgraph AILayer [AI Orchestration Layer]
+        OpenClaw[OpenClaw Agent]
+        Gemini[Gemini for NLU]
+        LangChain[LangChain Tools]
+    end
+    
+    subgraph VoiceLayer [Voice Layer]
+        ElevenLabs[11 Labs Conversational AI]
+        Twilio[Twilio Phone Integration]
+    end
+    
+    subgraph Backend [Backend Services]
+        NextAPI[Next.js API Routes]
+        Aidbox[Aidbox FHIR Server]
+    end
+    
+    subgraph ClinicInterface [Clinic Interface]
+        Dashboard[Praxis Dashboard]
+        Calendar[Appointment Calendar]
+        UrgentQueue[Urgent Queue]
+    end
+    
+    Phone --> ElevenLabs
+    ElevenLabs --> OpenClaw
+    WebPortal --> NextAPI
+    OpenClaw --> LangChain
+    OpenClaw --> Gemini
+    LangChain --> Aidbox
+    NextAPI --> Aidbox
+    Aidbox --> Dashboard
+    Aidbox --> Calendar
+    OpenClaw --> UrgentQueue
+```
+
+## Patient Call Flow (3-Tier Triage)
+
+```mermaid
+flowchart TD
+    Call[Patient Calls Praxis] --> AI[11 Labs Voice Agent Answers]
+    AI --> AskID["Ask: Name + Geburtsdatum or Phone"]
+    AskID --> Lookup{Search FHIR Database}
+    
+    Lookup -->|Found| Returning[Returning Patient - Pre-fill Data]
+    Lookup -->|Not Found| NewPatient[New Patient - Collect All Info]
+    
+    Returning --> Triage
+    NewPatient --> Triage
+    
+    Triage{AI Triages Call} -->|Life-Threatening| Emergency[EMERGENCY]
+    Triage -->|Needs Immediate Care| Urgent[URGENT]
+    Triage -->|Can Wait| Regular[REGULAR]
+    
+    Emergency --> Transfer["IMMEDIATELY transfer to human agent"]
+    Transfer --> HumanDecision{Human Agent Decides}
+    HumanDecision -->|Call 112| Advise112["Advise patient to call 112"]
+    HumanDecision -->|Hospital Help| HospitalAssist["Arrange hospital/clinic emergency help"]
+    
+    Urgent --> CheckSlots{Same-Day Slots Available?}
+    CheckSlots -->|Yes| BookUrgent[Book Immediate Appointment]
+    CheckSlots -->|No| AddQueue[Add to Urgent Queue for Callback]
+    
+    Regular --> CollectInfo[Collect/Confirm Patient Info]
+    CollectInfo --> FindSlot[Find Available Appointment]
+    FindSlot --> BookRegular[Book Appointment]
+    
+    BookUrgent --> Confirm[Confirm Appointment Details]
+    BookRegular --> Confirm
+    AddQueue --> Notify[Notify Praxis Staff]
+```
+
+## Emergency Detection - Always Active
+
+```mermaid
+flowchart LR
+    subgraph always [Runs Continuously During Entire Call]
+        Listen[AI Listens to Patient Speech]
+        Detect{Emergency Keywords Detected?}
+        Listen --> Detect
+        Detect -->|No| Listen
+        Detect -->|Yes| Interrupt[INTERRUPT Current Flow]
+        Interrupt --> TransferHuman[Transfer to Human Agent Immediately]
+    end
+```
+
+**Key Principle:** Emergency detection runs as a background process throughout the entire conversation. Even if the patient initially calls for a routine appointment but suddenly says "I'm having chest pain" mid-conversation, the AI must immediately detect this and transfer to a human agent.
+
+**Emergency Keywords (German + English):**
+
+- Herzinfarkt, heart attack, Brustschmerzen, chest pain
+- Kann nicht atmen, can't breathe, Atemnot, shortness of breath
+- Starke Blutung, severe bleeding, Ohnmacht, fainting
+- Schlaganfall, stroke, Krampfanfall, seizure
+- Suizid, suicide, selbst verletzen, self-harm
+- Bewusstlos, unconscious, nicht ansprechbar, unresponsive
+
+## Patient Verification Portal
+
+After AI completes the intake call, a secure link is sent to the patient (via SMS or email) to verify the data AI collected.
+
+```mermaid
+flowchart LR
+    AICompletes[AI Completes Intake] --> GenerateLink[Generate Secure Token]
+    GenerateLink --> SendLink["Send Link via SMS/Email"]
+    SendLink --> PatientOpens[Patient Opens Portal]
+    PatientOpens --> ReviewData[Review AI-Filled Data]
+    ReviewData --> MakeEdits{Corrections Needed?}
+    MakeEdits -->|Yes| EditForm[Edit Fields]
+    MakeEdits -->|No| Confirm[Confirm Data]
+    EditForm --> Confirm
+    Confirm --> UpdateFHIR[Update FHIR Record]
+    UpdateFHIR --> NotifyPraxis[Notify Praxis of Confirmation]
+```
+
+**Portal Features:**
+- Read-only view of AI-collected data with edit capability
+- Highlight fields AI was uncertain about (low confidence)
+- Simple mobile-friendly interface
+- Secure token-based access (no login required)
+- Time-limited link (expires after 24-48 hours)
+
+## AI Flags for Doctor Review
+
+AI marks certain items that the doctor should verify during the actual appointment.
+
+```mermaid
+flowchart TD
+    subgraph intake [During AI Intake]
+        Listen[AI Listens to Patient]
+        Assess{Confidence Level?}
+        Listen --> Assess
+        Assess -->|High| Store[Store Data]
+        Assess -->|Low| Flag[Store + Add Flag]
+        Assess -->|Medical Keyword| FlagMed[Store + Add VERIFY Flag]
+    end
+    
+    subgraph portal [Patient Verification Portal]
+        PatientEdit[Patient Edits Field]
+        PatientEdit --> AddEditFlag[Add PATIENT_EDITED Flag]
+    end
+    
+    subgraph doctor [Doctor View]
+        ShowFlags[Show All Flags for Patient]
+        ShowFlags --> DoctorVerifies[Doctor Verifies During Appointment]
+        DoctorVerifies --> ClearFlag[Clear Flag After Verification]
+    end
+```
+
+**How Flags Appear:**
+- In **Praxis Dashboard**: Flag icons next to patient entries
+- In **Patient Details View**: Highlighted fields with flag explanation
+- In **Doctor View**: Summary of all flags for quick pre-appointment review
+
+**Flag Types:**
+
+| Flag Type | Color | Meaning | Example |
+|-----------|-------|---------|---------|
+| `VERIFY_IDENTITY` | Yellow | Confirm patient identity | Name spelling unclear in audio |
+| `VERIFY_SYMPTOMS` | Orange | Clarify symptoms with patient | Patient described vague symptoms |
+| `VERIFY_MEDICATION` | Orange | Confirm current medications | Patient unsure of medication names |
+| `VERIFY_ALLERGY` | Red | Confirm allergies | Patient mentioned possible allergy |
+| `LOW_CONFIDENCE` | Gray | AI unsure about transcription | Background noise, unclear speech |
+| `PATIENT_EDITED` | Blue | Patient modified this field in portal | Data changed after AI intake |
+
+## AI Guardrails (Critical)
+
+The voice agent MUST follow these guardrails:
+
+1. **Never give medical advice** - AI only collects information, never diagnoses or recommends treatment
+2. **Emergency detection is ALWAYS ON** - Runs continuously during entire conversation, not just at triage stage
+3. **Emergency = Transfer to human** - AI does NOT tell patient to call 112 directly; instead transfers to human agent who makes that decision
+4. **Interrupt capability** - If patient mentions emergency symptoms at ANY point (even mid-sentence), AI must interrupt normal flow and transfer immediately
+5. **Empathetic tone** - Caring, patient voice; never rushed or robotic
+6. **Escalation path** - When uncertain about severity, always escalate to human staff
+7. **Data confirmation** - Always repeat back critical info (DOB, phone, symptoms) for verification
+
+## MVP Scope (12-24 hours)
+
+Given time constraints, focus on these **demo-ready** features:
+
+### Core Features (Must Have)
+
+1. **Voice-based patient intake** - Patient calls, AI collects info (Name, Geburtsdatum, symptoms)
+2. **3-tier triage system**:
+   - Emergency → Transfer to human agent
+   - Urgent → Same-day queue / immediate booking
+   - Regular → Standard appointment booking
+3. **Returning patient lookup** - Search by phone/DOB, pre-fill known data
+4. **Appointment booking** - AI checks availability and schedules appointments
+5. **Praxis dashboard** - Real-time view of incoming patients, urgent queue, and calendar
+6. **Patient verification portal** - After AI intake, send secure link for patient to verify/correct AI-filled data
+7. **AI flags for doctor review** - AI marks uncertain or important items that doctor should verify during appointment
+
+### Nice-to-Have (If Time Permits)
+
+- Multilingual support (German + English for demo)
+- SMS confirmation via Twilio
+
+### Roadmap Items (Mention in Pitch)
+
+- Überweisung (referral) document generation
+- Gesundheitskarte / Versichertennummer verification
+- Integration with existing PVS (Praxisverwaltungssystem)
+- GDPR compliance audit
+- Multi-practice support for larger Praxisgruppen
+
+---
+
+## Team Distribution (5 Members)
+
+### Person 1: Voice/AI Integration Lead
+
+**Focus:** 11 Labs + OpenClaw + Gemini
+
+- Set up 11 Labs Conversational AI agent (German language primary)
+- Configure empathetic voice prompts and conversation flows
+- Implement 3-tier triage logic with German emergency keywords
+- **Implement always-on emergency detection** - runs continuously, can interrupt at any point
+- **Implement human agent transfer** - emergency cases transfer to human, not direct 112 redirect
+- Integrate with Twilio for phone number (optional)
+- Connect OpenClaw for task orchestration
+- Use Gemini for intent classification (emergency vs urgent vs regular)
+
+**Key files to create:**
+
+- `lib/elevenlabs/agent-config.ts` - Voice agent configuration with German prompts
+- `lib/elevenlabs/conversation-flow.ts` - Intake conversation script
+- `lib/elevenlabs/emergency-detector.ts` - Always-on emergency keyword monitoring
+- `lib/openclaw/patient-intake-agent.ts` - Agent orchestration
+- `lib/ai/triage-classifier.ts` - Gemini-based 3-tier triage
+
+### Person 2: FHIR Backend Lead
+
+**Focus:** Aidbox + Data Models + Verification API
+
+- Set up Aidbox sandbox instance
+- Create FHIR resources: Patient, Appointment, Practitioner, Schedule
+- Build API wrapper for FHIR operations
+- **Implement patient lookup by phone/DOB** (returning patient detection)
+- Implement appointment slot availability logic
+- Create urgent queue data structure
+- **Build verification token API** - Generate secure tokens, validate, accept updates
+- **Implement AI flags storage** - Store flags with patient record in FHIR
+
+**Key files to create:**
+
+- `lib/fhir/aidbox-client.ts` - Aidbox API client
+- `lib/fhir/resources/` - FHIR resource types
+- `lib/fhir/flags.ts` - Flag types and utilities
+- `lib/verify/token-generator.ts` - Secure token generation
+- `lib/verify/send-link.ts` - SMS/email link sending
+- `app/api/patients/route.ts` - Patient CRUD
+- `app/api/patients/lookup/route.ts` - Search by phone/DOB for returning patients
+- `app/api/appointments/route.ts` - Appointment booking
+- `app/api/queue/urgent/route.ts` - Urgent queue management
+- `app/api/verify/[token]/route.ts` - Token validation API
+- `app/api/verify/submit/route.ts` - Submit verified/edited patient data
+
+### Person 3: Praxis Dashboard UI
+
+**Focus:** Next.js + Tailwind (Praxis-facing)
+
+- Build real-time dashboard showing incoming patients
+- Appointment calendar view (Terminkalender)
+- **Urgent queue with priority highlighting**
+- **Emergency transfer alert** - prominent alert when AI transfers emergency call to human agent
+- Patient details panel with pre-filled info and **AI flags display**
+- Visual indicator for new vs returning patients
+- **Doctor view** - Summary of AI flags for pre-appointment review
+
+**Key pages to create:**
+
+- `app/praxis/dashboard/page.tsx` - Main dashboard with emergency alert banner
+- `app/praxis/termine/page.tsx` - Calendar view (Terminkalender)
+- `app/praxis/dringend/page.tsx` - Urgent queue
+- `app/praxis/notfall/page.tsx` - Emergency transfers waiting for human agent
+- `app/praxis/patienten/[id]/page.tsx` - Patient details with **AI flags highlighted**
+- `components/praxis/EmergencyAlert.tsx` - Flashing/audio alert for emergency transfers
+- `components/praxis/PatientFlags.tsx` - Display all AI flags for a patient
+- `components/praxis/FlagBadge.tsx` - Individual flag badge (VERIFY_IDENTITY, etc.)
+- `components/praxis/` - Other reusable praxis components
+
+### Person 4: Patient Interface UI
+
+**Focus:** Next.js + Tailwind (Patient-facing)
+
+- Patient intake form (web fallback)
+- **Patient verification portal** - Secure page to review/edit AI-filled data
+- Appointment confirmation page
+- Voice call initiation button
+- Mobile-responsive design
+- Highlight AI-flagged uncertain fields
+
+**Key pages to create:**
+
+- `app/patient/intake/page.tsx` - Intake form
+- `app/patient/book/page.tsx` - Booking interface
+- `app/patient/confirmation/page.tsx` - Confirmation
+- `app/patient/verify/[token]/page.tsx` - **Verification portal with editable form**
+- `components/patient/VerificationForm.tsx` - Editable form showing AI data
+- `components/patient/FlaggedField.tsx` - Highlighted fields AI was uncertain about
+- `components/patient/` - Other reusable patient components
+
+### Person 5: Demo/Pitch/Integration Lead
+
+**Focus:** Pitch deck + Demo flow + Glue code
+
+- Create pitch deck (use Miro/Slides)
+- Write demo script
+- Handle integration between components
+- Create seed data for realistic demo
+- Record backup video using Runway (if live demo fails)
+
+**Key deliverables:**
+
+- `docs/pitch-deck.md` - Pitch content
+- `scripts/seed-data.ts` - Demo data
+- `docs/demo-script.md` - Demo walkthrough
+
+---
+
+## Technical Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | Next.js 14 + Tailwind + shadcn/ui | Modern, fast UI |
+| Backend | Next.js API Routes | API layer |
+| FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data |
+| Voice AI | 11 Labs Conversational AI | Voice interaction |
+| Phone | Twilio (via 11 Labs) | Inbound/outbound calls |
+| Agent | OpenClaw | Task orchestration |
+| NLU/Classification | Gemini | Intent/emergency detection |
+| Orchestration | LangChain | Tool calling, chains |
+
+---
+
+## Project Structure
+
+```
+ignis/
+├── app/
+│   ├── api/
+│   │   ├── patients/
+│   │   │   ├── route.ts          # Patient CRUD
+│   │   │   └── lookup/route.ts   # Search by phone/DOB
+│   │   ├── appointments/route.ts
+│   │   ├── queue/urgent/route.ts # Urgent queue management
+│   │   ├── verify/
+│   │   │   ├── [token]/route.ts  # Token validation
+│   │   │   └── submit/route.ts   # Submit verified data
+│   │   └── voice/webhook/route.ts
+│   ├── praxis/                   # Praxis (clinic) dashboard
+│   │   ├── dashboard/page.tsx
+│   │   ├── termine/page.tsx      # Appointments calendar
+│   │   ├── dringend/page.tsx     # Urgent queue
+│   │   ├── notfall/page.tsx      # Emergency transfers
+│   │   └── patienten/[id]/page.tsx  # Patient details with flags
+│   ├── patient/                  # Patient-facing UI
+│   │   ├── intake/page.tsx
+│   │   ├── book/page.tsx
+│   │   ├── confirmation/page.tsx
+│   │   └── verify/[token]/page.tsx  # Verification portal
+│   ├── layout.tsx
+│   └── page.tsx (landing)
+├── components/
+│   ├── praxis/
+│   │   ├── EmergencyAlert.tsx
+│   │   ├── PatientFlags.tsx      # Display AI flags
+│   │   └── FlagBadge.tsx         # Individual flag badge
+│   ├── patient/
+│   │   ├── VerificationForm.tsx  # Editable verification form
+│   │   └── FlaggedField.tsx      # Highlighted uncertain fields
+│   └── ui/ (shadcn)
+├── lib/
+│   ├── elevenlabs/
+│   │   ├── agent-config.ts
+│   │   ├── conversation-flow.ts
+│   │   └── emergency-detector.ts
+│   ├── fhir/
+│   │   ├── aidbox-client.ts
+│   │   ├── resources/
+│   │   └── flags.ts              # Flag types and utilities
+│   ├── openclaw/
+│   │   └── patient-intake-agent.ts
+│   ├── ai/
+│   │   ├── triage-classifier.ts
+│   │   └── confidence-scorer.ts  # Assess transcription confidence
+│   └── verify/
+│       ├── token-generator.ts    # Secure token generation
+│       └── send-link.ts          # SMS/email sending
+├── docs/
+│   ├── pitch-deck.md
+│   └── demo-script.md
+└── scripts/
+    └── seed-data.ts              # German demo data
+```
+
+---
+
+## Pitch Deck Structure (5-7 slides)
+
+### Slide 1: Problem
+
+- ~100,000 Arztpraxen in Germany, most still use phone + paper intake
+- Average 12-minute wait for phone scheduling; patients often give up
+- Praxis staff spend 30-40% of time on phone administration
+- Non-German speakers face significant barriers to healthcare access
+- Doctors lose valuable patient time to administrative overhead
+
+### Slide 2: Solution - "Give Doctors Their Time Back"
+
+- AI voice agent handles intake calls 24/7 with empathetic, caring voice
+- 3-tier intelligent triage: Emergency (→human agent), Urgent (→same-day), Regular (→booking)
+- Returning patient recognition - pre-fills known data
+- Speaks German + 30+ languages natively
+- **Never gives medical advice** - safety-first design
+- Integrates with existing systems via FHIR standard
+
+### Slide 3: Demo
+
+- Live call to the system (German)
+- Show returning patient lookup + pre-fill
+- Show urgent case going to priority queue
+- Show emergency mid-call interrupt → transfer to human
+- Display Praxis dashboard updating in real-time
+- Show patient verification portal + AI flags for doctor
+
+### Slide 4: Technology
+
+- Architecture diagram (from above)
+- Built on open standards (FHIR R4) - compatible with any PVS
+- Powered by: 11 Labs, Gemini, OpenClaw, Aidbox
+- EU data residency possible (GDPR-ready architecture)
+
+### Slide 5: Market and Monetization
+
+**Target Market (Germany first, then EU):**
+
+- ~100,000 Arztpraxen in Germany
+- ~500,000 practices across EU
+- EUR 2.1B German healthcare IT market (growing 8% annually)
+
+**Monetization:**
+
+- SaaS: EUR 199-499/month per Praxis (based on call volume)
+- Per-call pricing: EUR 0.40-1.00 per completed intake
+- Enterprise: Custom pricing for Praxisgruppen and MVZ
+
+**Value Proposition:**
+
+- Reduce staff phone time by 70%
+- 24/7 availability - never miss a patient call
+- Multilingual = serve diverse patient populations
+- Intelligent triage reduces liability and improves outcomes
+
+### Slide 6: Roadmap
+
+- Hackathon MVP (today)
+- Pilot with 3 Praxen in Germany (Month 1-2)
+- Überweisung (referral) automation (Month 2)
+- Gesundheitskarte integration (Month 3)
+- GDPR compliance audit (Month 3)
+- PVS integrations (CGM, mediatixx) (Month 4-6)
+- EU expansion (Month 6+)
+
+### Slide 7: Team and Ask
+
+- Team intro
+- Ask: "Looking for Praxis partners for pilot program"
+
+---
+
+## Demo Script (3-5 minutes)
+
+### Demo 1: Returning Patient - Regular Appointment (60s)
+
+1. Patient calls: "Hallo, ich möchte einen Termin für eine Impfung"
+2. AI greets warmly, asks for name + Geburtsdatum
+3. AI finds existing patient record, confirms: "Herr Schmidt, ich sehe Sie waren zuletzt am..."
+4. AI books appointment, confirms details
+5. **Show:** Praxis dashboard updates with new appointment
+
+### Demo 2: New Patient - Urgent Case (90s)
+
+1. Patient calls: "Ich hatte gestern eine Operation und jetzt blutet die Wunde"
+2. AI recognizes post-procedure complication → classifies as URGENT
+3. AI collects patient info (new patient flow)
+4. AI checks same-day availability, books urgent slot
+5. **Show:** Patient appears in Urgent Queue on Praxis dashboard with priority flag
+
+### Demo 3: Emergency Detection - Immediate Human Transfer (45s)
+
+**Scenario: Emergency interrupts mid-conversation**
+1. Patient calls for routine appointment: "Ich möchte einen Termin für..."
+2. Mid-conversation, patient suddenly says: "...warten Sie, ich habe gerade starke Brustschmerzen"
+3. AI immediately interrupts: "Ich höre, dass Sie Brustschmerzen haben. Das ist wichtig. Ich verbinde Sie sofort mit einem Mitarbeiter."
+4. **Show:** Call transfers to human agent queue, alert appears on Praxis dashboard
+5. **Explain:** Human agent decides whether to advise 112 or arrange clinic emergency help
+
+### Demo 4: Patient Verification Portal + AI Flags (45s)
+
+1. After call ends, patient receives SMS with secure verification link
+2. **Show:** Patient opens verification portal on mobile
+3. AI-flagged uncertain fields are highlighted (e.g., medication name was unclear)
+4. Patient corrects a field → PATIENT_EDITED flag added automatically
+5. Patient confirms data
+6. **Show:** Praxis dashboard shows:
+   - Patient verification complete checkmark
+   - AI flags for doctor: "VERIFY_MEDICATION", "PATIENT_EDITED: Allergien"
+7. **Explain:** Doctor sees flags before appointment, knows what to double-check
+
+### Closing (30s)
+
+- Show architecture diagram
+- Market opportunity (100K Praxen in Germany)
+- Ask: Pilot partners wanted
+
+---
+
+## Environment Variables Needed
+
+```env
+# Aidbox
+AIDBOX_URL=https://your-instance.aidbox.app
+AIDBOX_CLIENT_ID=your-client-id
+AIDBOX_CLIENT_SECRET=your-secret
+
+# 11 Labs
+ELEVENLABS_API_KEY=your-api-key
+ELEVENLABS_AGENT_ID=your-agent-id
+
+# Gemini
+GOOGLE_AI_API_KEY=your-gemini-key
+
+# Twilio (optional)
+TWILIO_ACCOUNT_SID=your-sid
+TWILIO_AUTH_TOKEN=your-token
+TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+```
+
+---
+
+## Quick Start Commands
+
+```bash
+# Initialize project
+npx create-next-app@latest ignis --typescript --tailwind --app --src-dir=false
+
+# Add dependencies
+npm install @langchain/core @langchain/google-genai @google/generative-ai
+npm install shadcn-ui zod react-hook-form date-fns
+npm install axios # for Aidbox API calls
+
+# Initialize shadcn
+npx shadcn@latest init
+npx shadcn@latest add button card input form calendar
+```
+
+---
+
+## Parallel Workstreams Timeline
+
+| Hour | Person 1 (Voice/AI) | Person 2 (FHIR) | Person 3 (Praxis UI) | Person 4 (Patient UI) | Person 5 (Demo) |
+|------|---------------------|-----------------|----------------------|-----------------------|-----------------|
+| 0-2 | 11 Labs setup (German) | Aidbox sandbox | Project scaffold | Project scaffold | Pitch deck draft |
+| 2-4 | Voice agent + prompts | FHIR client + flags | Dashboard layout | Intake form | Demo script (German) |
+| 4-6 | 3-tier triage logic | Patient lookup API | Urgent queue UI | Verification portal | Integration testing |
+| 6-8 | Emergency interrupt | Verification token API | Emergency alert UI | Flagged field UI | Test verification |
+| 8-10 | Confidence scoring | Appointment APIs | Patient flags display | Mobile responsive | Seed data (German) |
+| 10-12 | OpenClaw integration | Connect all APIs | Calendar + real-time | Confirmation page | End-to-end testing |
+| 12+ | Bug fixes + polish | Bug fixes | Polish | Polish | Rehearse demo |
+
+---
+
+## Risk Mitigation
+
+1. **11 Labs issues:** Have backup TTS with browser speech synthesis
+2. **Aidbox down:** Mock FHIR data locally
+3. **Demo fails:** Pre-record video with Runway
+4. **Time crunch:** Cut English demo, focus on core German flow only
+5. **German NLU issues:** Pre-test common German medical phrases; have fallback keywords
+
+## German Healthcare Context
+
+For the demo and pitch, incorporate these German-specific elements:
+
+| German Term | English | Usage in System |
+|-------------|---------|-----------------|
+| Praxis | Medical practice | UI labels, dashboard |
+| Arzt/Ärztin | Doctor | Practitioner records |
+| Termin | Appointment | Booking flow |
+| Geburtsdatum | Date of birth | Patient lookup |
+| Überweisung | Referral | Roadmap feature |
+| Gesundheitskarte | Health insurance card | Roadmap feature |
+| Notfall | Emergency | Triage keywords |
+| Dringend | Urgent | Triage classification |
+
+## Two Core System Functions
+
+Remember the system performs two distinct functions:
+
+1. **Patient Registration (Anmeldung)** - Routing incoming calls to the right process based on triage
+2. **Patient Intake (Aufnahme)** - Collecting and storing patient information in FHIR format
