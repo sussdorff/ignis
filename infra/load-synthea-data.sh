@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # Configuration
-FHIR_BASE_URL="${FHIR_BASE_URL:-http://localhost:8080/fhir}"
+FHIR_BASE_URL="${FHIR_BASE_URL:-https://ignis.cognovis.de}"
 FHIR_USER="${FHIR_USER:-admin}"
 FHIR_PASS="${FHIR_PASS:-ignis2026}"
 REPO_URL="https://github.com/smart-on-fhir/generated-sample-data.git"
