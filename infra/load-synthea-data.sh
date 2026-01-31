@@ -42,19 +42,19 @@ TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
 }
 
 log_success() {
-    echo -e "${GREEN}[OK]${NC} $1"
+    echo -e "${GREEN}[OK]${NC} $1" >&2
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 # Test FHIR server connectivity
@@ -76,6 +76,7 @@ test_fhir_connection() {
 }
 
 # Clone repository with sparse checkout (only Synthea data)
+# Sets DATA_DIR global variable with the path to Synthea data
 clone_synthea_data() {
     log_info "Cloning Synthea data from GitHub (sparse checkout)..."
     log_info "This may take a few minutes..."
@@ -84,25 +85,26 @@ clone_synthea_data() {
 
     # Initialize sparse checkout
     git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" synthea-data 2>&1 | while read -r line; do
-        echo -e "${BLUE}[GIT]${NC} $line"
+        log_info "[GIT] $line"
     done
 
     cd synthea-data
 
     # Configure sparse checkout
-    git sparse-checkout init --cone
-    git sparse-checkout set "$DATA_PATH"
+    git sparse-checkout init --cone 2>/dev/null
+    git sparse-checkout set "$DATA_PATH" 2>/dev/null
 
     # Checkout the files
     git checkout 2>&1 | while read -r line; do
-        echo -e "${BLUE}[GIT]${NC} $line"
+        log_info "[GIT] $line"
     done
 
     # Count files
     local file_count=$(find "$DATA_PATH" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
     log_success "Downloaded $file_count patient bundles"
 
-    echo "$TEMP_DIR/synthea-data/$DATA_PATH"
+    # Set global variable instead of returning via stdout
+    DATA_DIR="$TEMP_DIR/synthea-data/$DATA_PATH"
 }
 
 # Load a single bundle into FHIR server
@@ -165,12 +167,11 @@ main() {
 
     echo ""
 
-    # Clone repository
-    local data_dir
-    data_dir=$(clone_synthea_data)
+    # Clone repository (sets DATA_DIR global variable)
+    clone_synthea_data
 
-    if [[ ! -d "$data_dir" ]]; then
-        log_error "Data directory not found: $data_dir"
+    if [[ ! -d "$DATA_DIR" ]]; then
+        log_error "Data directory not found: $DATA_DIR"
         exit 1
     fi
 
@@ -178,12 +179,12 @@ main() {
     local files=()
     while IFS= read -r -d '' file; do
         files+=("$file")
-    done < <(find "$data_dir" -name "*.json" -print0 | sort -z)
+    done < <(find "$DATA_DIR" -name "*.json" -print0 | sort -z)
 
     TOTAL=${#files[@]}
 
     if [[ $TOTAL -eq 0 ]]; then
-        log_error "No JSON files found in $data_dir"
+        log_error "No JSON files found in $DATA_DIR"
         exit 1
     fi
 
