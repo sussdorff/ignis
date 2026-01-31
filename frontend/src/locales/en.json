@@ -415,11 +415,49 @@
   },
   "dashboard": {
     "title": "Practice Dashboard",
+    "subtitle": "Real-time overview of all patients",
     "patientQueue": "Patient Queue",
+    "loading": "Loading data...",
+    "error": "Error",
     "stats": {
+      "total": "Total",
+      "today": "Today",
       "waiting": "Waiting",
+      "urgent": "Urgent",
+      "emergency": "Emergency",
       "inProgress": "In Progress",
       "completed": "Completed"
+    },
+    "queues": {
+      "urgent": "Urgent (Today)",
+      "regular": "Regular"
     }
+  },
+  "book": {
+    "title": "Book Appointment",
+    "subtitle": "Schedule an Appointment",
+    "callSection": {
+      "title": "Call and book an appointment instantly",
+      "description": "Our AI assistant is available 24/7 to help you find a suitable appointment.",
+      "button": "Call Now"
+    },
+    "calendarSection": {
+      "title": "Online Calendar",
+      "description": "View available appointments and book directly.",
+      "button": "Open Calendar",
+      "note": "Will be implemented once FHIR integration is complete."
+    },
+    "or": "or"
+  },
+  "verify": {
+    "title": "Review Data",
+    "subtitle": "Review Your Information",
+    "validationRequired": "AI Validation Required",
+    "validationDescription": "Please review the following information collected by our AI assistant during your call.",
+    "token": "Verification Token",
+    "pendingNote": "This page will be implemented once FHIR integration is complete."
+  },
+  "languageSelector": {
+    "label": "Language"
   }
 }

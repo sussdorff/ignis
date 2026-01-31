@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getPatients, getEmergencyAlerts, type Patient } from '@/lib/api'
 import EmergencyAlert from '@/components/praxis/EmergencyAlert'
 import PatientQueue from '@/components/praxis/PatientQueue'
 import StatsCards from '@/components/praxis/StatsCards'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
 
 export default function PraxisDashboard() {
+  const { t } = useTranslation()
   const [patients, setPatients] = useState<Patient[]>([])
   const [emergencies, setEmergencies] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +39,7 @@ export default function PraxisDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Lade Daten...</div>
+        <div className="text-lg text-gray-600">{t('dashboard.loading')}</div>
       </div>
     )
   }
@@ -44,7 +47,7 @@ export default function PraxisDashboard() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Fehler: {error}</div>
+        <div className="text-lg text-red-600">{t('dashboard.error')}: {error}</div>
       </div>
     )
   }
@@ -62,9 +65,12 @@ export default function PraxisDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900">🔥 Ignis Praxis Dashboard</h1>
-          <p className="text-sm text-gray-600">Echtzeit-Übersicht aller Patienten</p>
+        <div className="max-w-7xl mx-auto flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">🔥 {t('app.title')} - {t('dashboard.title')}</h1>
+            <p className="text-sm text-gray-600">{t('dashboard.subtitle')}</p>
+          </div>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -86,14 +92,14 @@ export default function PraxisDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Urgent Queue */}
           <PatientQueue
-            title="Dringend (Heute)"
+            title={t('dashboard.queues.urgent')}
             patients={urgentPatients}
             urgencyType="urgent"
           />
 
           {/* Regular Queue */}
           <PatientQueue
-            title="Regulär"
+            title={t('dashboard.queues.regular')}
             patients={regularPatients}
             urgencyType="regular"
           />

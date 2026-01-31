@@ -1,20 +1,23 @@
 import de from './de.json';
 import en from './en.json';
-import tr from './tr.json';
+import ru from './ru.json';
+import hi from './hi.json';
 
 export const resources = {
   de: { translation: de },
   en: { translation: en },
-  tr: { translation: tr },
+  ru: { translation: ru },
+  hi: { translation: hi },
 } as const;
 
-export const supportedLanguages = ['de', 'en', 'tr'] as const;
+export const supportedLanguages = ['de', 'en', 'ru', 'hi'] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
 export const languageNames: Record<SupportedLanguage, string> = {
   de: 'Deutsch',
   en: 'English',
-  tr: 'Türkçe',
+  ru: 'Русский',
+  hi: 'हिन्दी',
 };
 
-export { de, en, tr };
+export { de, en, ru, hi };

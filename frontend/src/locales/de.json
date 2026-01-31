@@ -415,11 +415,49 @@
   },
   "dashboard": {
     "title": "Praxis-Dashboard",
+    "subtitle": "Echtzeit-Übersicht aller Patienten",
     "patientQueue": "Warteschlange",
+    "loading": "Lade Daten...",
+    "error": "Fehler",
     "stats": {
+      "total": "Gesamt",
+      "today": "Heute",
       "waiting": "Wartend",
+      "urgent": "Dringend",
+      "emergency": "Notfall",
       "inProgress": "In Behandlung",
       "completed": "Abgeschlossen"
+    },
+    "queues": {
+      "urgent": "Dringend (Heute)",
+      "regular": "Regulär"
     }
+  },
+  "book": {
+    "title": "Termin buchen",
+    "subtitle": "Termin vereinbaren",
+    "callSection": {
+      "title": "Anrufen und sofort einen Termin buchen",
+      "description": "Unsere KI-Assistentin hilft Ihnen 24/7, einen passenden Termin zu finden.",
+      "button": "Jetzt anrufen"
+    },
+    "calendarSection": {
+      "title": "Online-Kalender",
+      "description": "Verfügbare Termine einsehen und direkt buchen.",
+      "button": "Kalender öffnen",
+      "note": "Wird implementiert, sobald die FHIR-Integration abgeschlossen ist."
+    },
+    "or": "oder"
+  },
+  "verify": {
+    "title": "Daten überprüfen",
+    "subtitle": "Ihre Daten überprüfen",
+    "validationRequired": "AI-Validierung erforderlich",
+    "validationDescription": "Bitte überprüfen Sie die folgenden Informationen, die unser KI-Assistent während Ihres Anrufs gesammelt hat.",
+    "token": "Verification Token",
+    "pendingNote": "Diese Seite wird implementiert, sobald die FHIR-Integration abgeschlossen ist."
+  },
+  "languageSelector": {
+    "label": "Sprache"
   }
 }
