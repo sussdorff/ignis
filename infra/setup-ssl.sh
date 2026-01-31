@@ -127,6 +127,12 @@ if grep -q "^SSL_EMAIL=" .env 2>/dev/null; then
 else
     echo "SSL_EMAIL=$SSL_EMAIL" >> .env
 fi
+# Set NGINX_CONF to use SSL config
+if grep -q "^NGINX_CONF=" .env 2>/dev/null; then
+    sed -i.bak "s|^NGINX_CONF=.*|NGINX_CONF=./infra/nginx/nginx-ssl.conf|" .env
+else
+    echo "NGINX_CONF=./infra/nginx/nginx-ssl.conf" >> .env
+fi
 rm -f .env.bak
 
 # Restart services with SSL

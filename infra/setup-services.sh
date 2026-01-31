@@ -49,7 +49,15 @@ fi
 SSL_ENABLED=false
 if [[ -n "$DOMAIN" && -f "$PROJECT_DIR/infra/ssl/fullchain.pem" && -f "$PROJECT_DIR/infra/nginx/nginx-ssl.conf" ]]; then
     log "SSL certificates found - enabling HTTPS for $DOMAIN"
+    # Ensure NGINX_CONF is set in .env for docker-compose
+    if ! grep -q "^NGINX_CONF=" .env 2>/dev/null; then
+        echo "NGINX_CONF=./infra/nginx/nginx-ssl.conf" >> .env
+    fi
     export NGINX_CONF="./infra/nginx/nginx-ssl.conf"
+    SSL_ENABLED=true
+elif [[ -n "$NGINX_CONF" && -f "$PROJECT_DIR/infra/ssl/fullchain.pem" ]]; then
+    # NGINX_CONF already set in .env (e.g., by setup-ssl.sh)
+    log "Using SSL configuration from NGINX_CONF=$NGINX_CONF"
     SSL_ENABLED=true
 elif [[ -n "$DOMAIN" ]]; then
     warn "DOMAIN is set but SSL certificates not found."
