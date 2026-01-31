@@ -32,7 +32,6 @@ RUN bun install --frozen-lockfile --production
 
 # Copy backend source
 COPY src/ ./src/
-COPY tsconfig.json ./
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
