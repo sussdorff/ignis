@@ -82,16 +82,26 @@ clone_synthea_data() {
     log_info "Cloning Synthea data from GitHub (sparse checkout)..."
     log_info "This may take a few minutes..."
 
-    cd "$TEMP_DIR"
+    local orig_dir="$PWD"
+
+    cd "$TEMP_DIR" || {
+        log_error "Failed to cd to $TEMP_DIR"
+        return 1
+    }
 
     # Initialize sparse checkout (simplified output for SSH compatibility)
     log_info "[GIT] Cloning repository..."
     git clone --filter=blob:none --no-checkout --depth 1 "$REPO_URL" synthea-data 2>&1 || {
         log_error "Failed to clone repository"
+        cd "$orig_dir"
         return 1
     }
 
-    cd synthea-data
+    cd synthea-data || {
+        log_error "Failed to cd to synthea-data"
+        cd "$orig_dir"
+        return 1
+    }
 
     # Configure sparse checkout
     log_info "[GIT] Setting up sparse checkout..."
@@ -102,15 +112,18 @@ clone_synthea_data() {
     log_info "[GIT] Checking out files..."
     git checkout 2>&1 || {
         log_error "Failed to checkout files"
+        cd "$orig_dir"
         return 1
     }
 
     # Count files
-    local file_count=$(find "$DATA_PATH" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+    local file_count=$(ls -1 "$DATA_PATH"/*.json 2>/dev/null | wc -l | tr -d ' ')
     log_success "Downloaded $file_count patient bundles"
 
     # Set global variable instead of returning via stdout
     DATA_DIR="$TEMP_DIR/synthea-data/$DATA_PATH"
+
+    cd "$orig_dir"
 }
 
 # Load a single bundle into FHIR server
@@ -188,9 +201,11 @@ main() {
     fi
 
     # Get list of JSON files (using ls for simplicity and SSH compatibility)
+    log_info "Looking for files in $DATA_DIR..."
     mapfile -t files < <(ls -1 "$DATA_DIR"/*.json 2>/dev/null | sort)
 
     TOTAL=${#files[@]}
+    log_info "Found $TOTAL JSON files to process"
 
     if [[ $TOTAL -eq 0 ]]; then
         log_error "No JSON files found in $DATA_DIR"
