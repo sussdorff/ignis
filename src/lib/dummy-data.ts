@@ -77,6 +77,41 @@ function normalizePhone(phone: string): string {
 }
 
 /**
+ * Get all patients.
+ * 
+ * TODO: Replace with Aidbox FHIR search:
+ *   GET /fhir/Patient?_count=100
+ */
+export function getAllPatients(): Array<{
+  id: string
+  firstName: string
+  lastName: string
+  phone: string
+  birthDate: string
+  email?: string
+  address?: string
+  isReturning?: boolean
+  urgency?: 'emergency' | 'urgent' | 'regular'
+  flags?: string[]
+  createdAt?: string
+}> {
+  const patients = Array.from(patientStore.values())
+  
+  return patients.map(p => ({
+    id: p.id,
+    firstName: p.name?.[0]?.given?.[0] ?? '',
+    lastName: p.name?.[0]?.family ?? '',
+    phone: p.telecom?.find(t => t.system === 'phone')?.value ?? '',
+    birthDate: p.birthDate ?? '',
+    email: p.telecom?.find(t => t.system === 'email')?.value,
+    address: p.address?.[0]?.line?.join(', '),
+    // Add mock urgency for demo
+    urgency: p.id === 'patient-1' ? 'urgent' : 'regular',
+    isReturning: true,
+  }))
+}
+
+/**
  * Find a patient by phone and/or birthDate.
  * Returns the patient if exactly one match found, null otherwise.
  * 

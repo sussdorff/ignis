@@ -7,9 +7,18 @@ import {
   type PatientLookupResponse,
   type PatientCreateOrUpdateResponse,
 } from '../lib/schemas'
-import { findPatient, getPatientById, createOrUpdatePatient } from '../lib/dummy-data'
+import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients } from '../lib/dummy-data'
 
 const patients = new Hono()
+
+// =============================================================================
+// GET /api/patients - list all patients
+// =============================================================================
+patients.get('/', (c) => {
+  // TODO: Replace with Aidbox FHIR query
+  const allPatients = getAllPatients()
+  return c.json(allPatients, 200)
+})
 
 // =============================================================================
 // GET /api/patients/lookup - patient_lookup
