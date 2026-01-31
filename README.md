@@ -1,6 +1,6 @@
 # Ignis
 
-Hackathon project by Team Ignis.
+Hackathon project by Team Ignis. 
 
 ## Infrastructure
 
