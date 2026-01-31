@@ -92,6 +92,23 @@ flowchart TB
    - OpenClaw alerts staff via WhatsApp if urgent
    - OpenClaw updates Aidbox with AI flags
 
+### Route overview
+
+Backend routes are mounted under `/api`. These are the HTTP endpoints used by **ElevenLabs Tools** during the call; some are also used by the **React frontend** (patient portal, praxis dashboard). Full request/response contracts: **[backend-services-elevenlabs.openapi.yaml](backend-services-elevenlabs.openapi.yaml)** (OpenAPI 3.0.3).
+
+| Method | Path | Operation ID | Purpose |
+|--------|------|--------------|---------|
+| GET | `/api/patients/lookup` | `patient_lookup` | Find returning patient by phone and/or birthDate (Geburtsdatum). |
+| POST | `/api/patients` | `patient_create_or_update` | Create or update Patient with intake data (family, given, birthDate, phone, etc.). |
+| GET | `/api/appointments/slots` | `get_available_slots` | List bookable slots for a date (query: date, optional practitionerId, limit). |
+| POST | `/api/appointments` | `book_appointment` | Create Appointment for a chosen slotId and patientId. |
+| POST | `/api/queue/urgent` | `add_to_urgent_queue` | Add patient to urgent callback queue (when triage=Urgent, no same-day slot). |
+| POST | `/api/queue/emergency` | `register_emergency_transfer` | Log emergency transfer to human (for dashboard/alerting). |
+
+**For agents:** Use the **operation ID** column when wiring ElevenLabs Tools to these routes. Request/response schemas, error codes, and parameter details are in the OpenAPI spec.
+
+**Planned (not in OpenAPI yet):** Verification and portal routes (e.g. `GET /api/verify/[token]`, `POST /api/verify/submit`) for the patient verification flow; dashboard may add GETs for queue and calendar.
+
 ## Patient Call Flow (3-Tier Triage)
 
 ```mermaid
