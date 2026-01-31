@@ -180,6 +180,63 @@ This will:
 - Aidbox UI: http://localhost:8080 (admin/ignis2026)
 - n8n Workflows: http://localhost:5678 (admin/ignis2026)
 
+## Deployment
+
+### Initial Setup (New Server)
+
+```bash
+# 1. Provision Hetzner server
+./infra/provision.sh
+
+# 2. Setup everything (clones repo, installs Bun, builds app, starts services)
+./infra/setup-remote.sh <server-ip>
+```
+
+This will:
+- Clone the repo to `/opt/ignis`
+- Install Bun runtime
+- Build frontend and backend
+- Create systemd service for the app
+- Start Docker services (Aidbox, n8n, nginx)
+- Configure nginx reverse proxy
+
+### Updating Existing Server
+
+After pushing code changes:
+
+```bash
+./infra/update-server.sh [server-ip]
+```
+
+This will:
+- Pull latest code
+- Rebuild frontend
+- Restart the app service
+- Restart nginx
+
+### Manual Deployment
+
+On the server:
+
+```bash
+cd /opt/ignis
+git pull origin main
+./infra/deploy-app.sh
+```
+
+### Service Management
+
+```bash
+# Check status
+sudo systemctl status ignis-app
+
+# View logs
+sudo journalctl -u ignis-app -f
+
+# Restart
+sudo systemctl restart ignis-app
+```
+
 ## Infrastructure
 
 See `infra/` directory for server provisioning:
@@ -191,8 +248,8 @@ See `infra/` directory for server provisioning:
 # Setup after provisioning
 ./infra/setup-remote.sh <server-ip>
 
-# Setup Aidbox with demo data
-./infra/setup-aidbox.sh
+# Update after code changes
+./infra/update-server.sh <server-ip>
 
 # Add team member SSH keys
 ./infra/user-setup.sh <server-ip>
@@ -209,29 +266,47 @@ ssh hackathon@167.235.236.238
 
 ## Services
 
-| Service | Port | Credentials |
-|---------|------|-------------|
-| Aidbox (FHIR Server) | 8080 | admin / ignis2026 |
-| n8n (Workflows) | 5678 | admin / ignis2026 |
-| OpenClaw (AI Agent) | 3000 | - |
+| Service | Port | Access | Credentials |
+|---------|------|--------|-------------|
+| Ignis App | 3000 | http://server-ip/ | - |
+| Aidbox (FHIR) | - | http://server-ip/aidbox/ | admin / ignis2026 |
+| FHIR API | - | http://server-ip/fhir/ | admin / ignis2026 |
+| n8n (Workflows) | - | http://server-ip/n8n/ | admin / ignis2026 |
+
+All services are proxied through nginx on port 80/443.
 
 ## Project Structure
 
 ```
 ignis/
-├── app/                  # Next.js app
-│   ├── api/              # Backend APIs
-│   ├── praxis/           # Clinic dashboard
-│   └── patient/          # Patient-facing UI
-├── components/           # React components
-├── lib/                  # Core libraries
-│   ├── elevenlabs/       # Voice AI
-│   ├── fhir/             # FHIR client
-│   ├── openclaw/         # Agent orchestration
-│   └── ai/               # Triage/classification
-├── infra/                # Infrastructure scripts
-├── docs/                 # Documentation
-└── scripts/              # Utilities
+├── src/                     # Bun + Hono backend
+│   ├── index.ts             # Entry point (serves API + frontend)
+│   ├── api/                 # API routes (to be implemented)
+│   └── lib/                 # Shared libraries
+│       ├── fhir/            # FHIR client
+│       ├── elevenlabs/      # Voice AI integration
+│       ├── openclaw/        # Agent orchestration
+│       └── ai/              # Triage/classification
+├── frontend/                # Vite + React frontend
+│   ├── src/
+│   │   ├── pages/           # Page components
+│   │   │   ├── praxis/      # Clinic dashboard
+│   │   │   └── patient/     # Patient-facing UI
+│   │   ├── components/      # React components
+│   │   │   ├── ui/          # shadcn/ui components
+│   │   │   ├── praxis/      # Clinic-specific
+│   │   │   └── patient/     # Patient-specific
+│   │   └── lib/             # Frontend utilities
+│   └── dist/                # Built frontend (served by backend)
+├── infra/                   # Infrastructure & deployment
+│   ├── deploy-app.sh        # Deploy/update app on server
+│   ├── update-server.sh     # Quick update script
+│   ├── setup-remote.sh      # Initial server setup
+│   └── nginx/               # Nginx configs
+├── docs/                    # Documentation
+│   └── PLAN.md              # Detailed implementation plan
+└── aidbox/                  # FHIR seed data
+    └── seed/
 ```
 
 ## Documentation

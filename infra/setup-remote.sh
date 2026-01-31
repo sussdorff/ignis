@@ -42,10 +42,19 @@ git pull origin main 2>/dev/null || echo "Repo may be empty or not yet pushed"
 # Create .env from example if not exists
 [[ -f .env ]] || cp .env.example .env 2>/dev/null || true
 
-# Start services
+# Deploy Ignis app (Bun backend + React frontend)
+echo ""
+echo "Deploying Ignis application..."
+if [[ -x infra/deploy-app.sh ]]; then
+    ./infra/deploy-app.sh
+else
+    echo "deploy-app.sh not found - skipping app deployment"
+fi
+
+# Start Docker services
 echo ""
 echo "Starting Docker services..."
-docker compose up -d 2>/dev/null || echo "Docker compose not ready yet - run 'dc up -d' manually"
+docker compose up -d 2>/dev/null || echo "Docker compose not ready yet - run 'docker compose up -d' manually"
 
 echo ""
 echo "================================================"
@@ -57,11 +66,12 @@ echo ""
 echo "Services:"
 echo "  Aidbox: http://$HOSTNAME:8080"
 echo "  n8n:    http://$HOSTNAME:5678 (admin/ignis2026)"
+echo "  App:    http://$HOSTNAME/ (Ignis Patient Intake)"
 echo ""
 echo "Next steps:"
 echo "  1. Edit /opt/ignis/.env with API keys"
-echo "  2. Run: dc up -d"
-echo "  3. Setup Claude Code: claude auth"
+echo "  2. Run: docker compose up -d"
+echo "  3. Check app: sudo systemctl status ignis-app"
 echo ""
 REMOTE_SCRIPT
 
