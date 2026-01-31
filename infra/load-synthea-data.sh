@@ -206,12 +206,23 @@ load_bundle() {
     # - deceasedDateTime (Patient - for deceased patients)
     # - serviceProvider (Encounter - organization references)
     # - participant.individual (Encounter - practitioner references)
+    #
+    # Also add ifNoneExist to make POSTs idempotent - if resource with same ID
+    # exists, skip it instead of failing. This handles shared Organization/Practitioner.
     local cleaned_file="$TEMP_DIR/cleaned.json"
-    jq 'walk(if type == "object" then
+    jq '
+      # Add ifNoneExist header to make creates conditional (skip if exists)
+      .entry |= map(
+        if .request.method == "POST" and .resource.id then
+          .request.ifNoneExist = ("_id=" + .resource.id)
+        else . end
+      ) |
+      # Strip problematic fields
+      walk(if type == "object" then
         del(.multipleBirthBoolean, .multipleBirthInteger, .deceasedDateTime, .serviceProvider) |
         if .participant then .participant |= map(del(.individual)) else . end
-      else . end)' \
-        "$bundle_file" > "$cleaned_file"
+      else . end)
+    ' "$bundle_file" > "$cleaned_file"
 
     # POST bundle to FHIR server
     local response_file="$TEMP_DIR/response.json"
@@ -225,14 +236,14 @@ load_bundle() {
         "${FHIR_BASE_URL}" 2>/dev/null || echo "000")
 
     if [[ "$http_code" == "200" ]] || [[ "$http_code" == "201" ]]; then
-        local entry_count=$(jq '.entry | length // 0' "$bundle_file")
+        local entry_count=$(jq '.entry | length // 0' "$response_file")
         log_success "[$index/$TOTAL] Loaded: $filename ($entry_count resources)"
         ((LOADED++))
         return 0
     else
         local error_msg=$(jq -r '.issue[0].diagnostics // .message // "Unknown error"' "$response_file" 2>/dev/null || echo "HTTP $http_code")
-        # Check if it's a duplicate error (409 or contains "duplicate")
-        if [[ "$error_msg" == *"duplicate"* ]] || [[ "$http_code" == "409" ]]; then
+        # Check if it's a duplicate error - means patient already fully loaded
+        if [[ "$error_msg" == *"duplicate"* ]] && [[ "$error_msg" == *"patient_pkey"* ]]; then
             log_warn "[$index/$TOTAL] Skipped (already exists): $filename"
             ((SKIPPED++))
             return 0
