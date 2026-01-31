@@ -8,14 +8,16 @@
 - **Backend**: Hono (TypeScript)
 - **Frontend**: React + Vite
 - **FHIR Server**: Aidbox (R4 4.0.1)
-- **Testing**: Bun Test (built-in)
+- **Testing**:
+  - Backend: Bun Test (integration tests)
+  - Frontend: Vitest + React Testing Library (component tests)
 
 ## Testing
 
-We use **Bun's built-in test runner** for all automated tests.
+### Backend Tests (Bun Test)
 
 ```bash
-# Run all tests (requires server running)
+# Run all backend tests (requires server running)
 bun test
 
 # Run tests in watch mode
@@ -25,9 +27,32 @@ bun test --watch
 bun test src/__tests__/questionnaires.test.ts
 ```
 
-**Important**: Tests are integration tests that require the server to be running (`bun run dev`).
+**Important**: Backend tests are integration tests that require the server to be running (`bun run dev`).
 
 Test files are located in `src/__tests__/*.test.ts`.
+
+### Frontend Tests (Vitest)
+
+```bash
+# Run frontend tests
+cd frontend && bun run test
+
+# Run in watch mode
+cd frontend && bun run test:watch
+
+# Run with coverage
+cd frontend && bun run test:coverage
+```
+
+Test files are located in `frontend/src/**/*.test.tsx`.
+
+## Agent Instructions
+
+When writing frontend code:
+- **Always generate Vitest tests** for new React components
+- Place test files next to components: `Component.tsx` → `Component.test.tsx`
+- Use React Testing Library for component testing
+- Test user interactions, not implementation details
 
 ## FHIR Server Configuration
 
