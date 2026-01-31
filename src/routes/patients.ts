@@ -24,32 +24,24 @@ patients.get('/', (c) => {
 // GET /api/patients/lookup - patient_lookup
 // Find a returning patient by phone and/or date of birth (Geburtsdatum).
 // =============================================================================
-patients.get(
-  '/lookup',
-  zValidator('query', PatientLookupQuerySchema, (result, c) => {
-    if (!result.success) {
-      return c.json(
-        {
-          error: 'validation_failed',
-          message: result.error.errors.map((e) => e.message).join('; '),
-        },
-        400
-      )
-    }
-  }),
-  async (c) => {
-    const { phone, birthDate } = c.req.valid('query')
-
-    const patient = await findPatient(phone, birthDate)
-
-    const response: PatientLookupResponse = {
-      patient,
-      found: patient !== null,
-    }
-
-    return c.json(response, 200)
+patients.get('/lookup', async (c) => {
+  const parsed = PatientLookupQuerySchema.safeParse(c.req.query())
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+    const message = issues.map((e) => e.message).join('; ') || 'At least one of phone or birthDate must be provided'
+    return c.json({ error: 'validation_failed', message }, 400)
   }
-)
+
+  const { phone, birthDate } = parsed.data
+  const patient = await findPatient(phone, birthDate)
+
+  const response: PatientLookupResponse = {
+    patient,
+    found: patient !== null,
+  }
+
+  return c.json(response, 200)
+})
 
 // =============================================================================
 // POST /api/patients - patient_create_or_update
