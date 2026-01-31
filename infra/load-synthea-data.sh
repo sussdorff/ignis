@@ -62,7 +62,7 @@ test_fhir_connection() {
     log_info "Testing FHIR server connection at $FHIR_BASE_URL..."
 
     local HTTP_CODE
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    HTTP_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" \
         -u "${FHIR_USER}:${FHIR_PASS}" \
         "${FHIR_BASE_URL}/metadata" 2>/dev/null) || HTTP_CODE="000"
 
@@ -151,7 +151,7 @@ load_bundle() {
     local response_file="$TEMP_DIR/response.json"
     local http_code
 
-    http_code=$(curl -s -w "%{http_code}" -o "$response_file" \
+    http_code=$(curl -s -L -w "%{http_code}" -o "$response_file" \
         -X POST \
         -H "Content-Type: application/fhir+json" \
         -u "${FHIR_USER}:${FHIR_PASS}" \
