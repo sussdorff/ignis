@@ -51,7 +51,7 @@ flowchart TB
     end
     
     subgraph Backend [Backend Services]
-        NextAPI[Next.js API Routes]
+        BunAPI[Bun + Hono API]
         Aidbox[Aidbox FHIR Server]
     end
     
@@ -67,10 +67,10 @@ flowchart TB
     end
     
     Phone --> ElevenLabs
-    ElevenLabs -->|"Tools (real-time)"| NextAPI
+    ElevenLabs -->|"Tools (real-time)"| BunAPI
     ElevenLabs -->|"Post-call webhook"| OpenClaw
-    WebPortal --> NextAPI
-    NextAPI --> Aidbox
+    WebPortal --> BunAPI
+    BunAPI --> Aidbox
     OpenClaw --> Gemini
     OpenClaw --> Aidbox
     OpenClaw -->|"Send verification SMS"| Phone
@@ -84,7 +84,7 @@ flowchart TB
 | Component | Role | When |
 |-----------|------|------|
 | **ElevenLabs** | Voice conversation, triage, patient lookup, booking | During call (real-time) |
-| **Next.js APIs** | HTTP endpoints for ElevenLabs tools, web UIs | During call + web access |
+| **Bun + Hono API** | HTTP endpoints for ElevenLabs tools, web UIs | During call + web access |
 | **Aidbox** | FHIR data storage (patients, appointments) | Always |
 | **OpenClaw** | SMS notifications, staff alerts, call analysis, follow-ups | After call (background) |
 | **Gemini** | Intent classification, confidence scoring | Called by OpenClaw |
@@ -103,20 +103,32 @@ flowchart TB
 
 ## Project Status
 
-✅ **Completed**
-- Backend scaffold (Bun + Hono) with health check endpoint
-- Frontend scaffold (Vite + React + TypeScript)
-- Tailwind CSS v4 integration
-- shadcn/ui components (button, card, input, form, calendar, label)
-- Path aliases configured (@/* → src/*)
-- Frontend proxy to backend (/api → localhost:3000)
+✅ **Completed** (Foundation - ~25%)
+- ✅ Backend scaffold (Bun + Hono) with health check endpoint
+- ✅ Frontend scaffold (Vite + React + TypeScript)
+- ✅ Tailwind CSS v4 integration
+- ✅ shadcn/ui components (button, card, input, form, calendar, label)
+- ✅ Path aliases configured (@/* → src/*)
+- ✅ Docker-based deployment (app, Aidbox, n8n, nginx)
+- ✅ Automated deployment scripts (setup-remote.sh, update-server.sh)
+- ✅ Nginx reverse proxy routing (/app, /api, /fhir, /n8n)
+- ✅ Basic API routes structure (patients endpoint with mock data)
 
-🚧 **To Do**
-- FHIR client (Aidbox integration)
-- API routes (patients, appointments, queue, verification)
-- UI pages (Praxis dashboard, Patient portal)
-- ElevenLabs voice integration
-- OpenClaw background tasks
+🚧 **In Progress** (Next Steps)
+- 🔄 FHIR client (Aidbox integration) - **PRIORITY**
+- 🔄 Real API implementation (replace mock data with FHIR)
+
+🔴 **Not Started** (Core Features - ~75%)
+- ❌ Patient lookup by phone/DOB with returning patient pre-fill
+- ❌ 3-tier triage logic (Emergency/Urgent/Regular)
+- ❌ Emergency detection (always-on interrupt)
+- ❌ Patient verification portal (token-based secure access)
+- ❌ AI flagging system (uncertain fields for doctor review)
+- ❌ UI pages (Praxis dashboard, Patient portal, Appointment booking)
+- ❌ ElevenLabs voice integration (German conversation flow)
+- ❌ OpenClaw background tasks (SMS, WhatsApp, call analysis)
+- ❌ German seed data (Ärzte, schedules, sample patients)
+- ❌ Pitch deck and demo preparation
 
 📋 **Full Plan**: See [docs/PLAN.md](docs/PLAN.md)
 
@@ -326,32 +338,39 @@ docker compose up -d --build app
 ignis/
 ├── src/                     # Bun + Hono backend
 │   ├── index.ts             # Entry point (serves API + frontend)
-│   ├── api/                 # API routes (to be implemented)
+│   ├── routes/              # API route handlers
+│   │   └── patients.ts      # Patient endpoints
 │   └── lib/                 # Shared libraries
-│       ├── fhir/            # FHIR client
-│       ├── elevenlabs/      # Voice AI integration
-│       ├── openclaw/        # Agent orchestration
-│       └── ai/              # Triage/classification
+│       ├── schemas.ts       # Zod validation schemas
+│       ├── dummy-data.ts    # Mock data (to be replaced with FHIR)
+│       ├── fhir/            # FHIR client (to be implemented)
+│       ├── elevenlabs/      # Voice AI integration (to be implemented)
+│       ├── openclaw/        # Agent orchestration (to be implemented)
+│       └── ai/              # Triage/classification (to be implemented)
 ├── frontend/                # Vite + React frontend
 │   ├── src/
-│   │   ├── pages/           # Page components
+│   │   ├── App.tsx          # Main app component
+│   │   ├── components/      # React components
+│   │   │   └── ui/          # shadcn/ui components
+│   │   ├── pages/           # Page components (to be implemented)
 │   │   │   ├── praxis/      # Clinic dashboard
 │   │   │   └── patient/     # Patient-facing UI
-│   │   ├── components/      # React components
-│   │   │   ├── ui/          # shadcn/ui components
-│   │   │   ├── praxis/      # Clinic-specific
-│   │   │   └── patient/     # Patient-specific
 │   │   └── lib/             # Frontend utilities
 │   └── dist/                # Built frontend (served by backend)
 ├── infra/                   # Infrastructure & deployment
-│   ├── deploy-app.sh        # Deploy/update app on server
-│   ├── update-server.sh     # Quick update script
 │   ├── setup-remote.sh      # Initial server setup
-│   └── nginx/               # Nginx configs
+│   ├── update-server.sh     # Quick update script
+│   ├── setup-aidbox.sh      # Aidbox setup script
+│   ├── setup-services.sh    # Service configuration
+│   ├── provision.sh         # Hetzner provisioning
+│   ├── nginx/               # Nginx configs
+│   └── ssl/                 # SSL certificates
 ├── docs/                    # Documentation
 │   └── PLAN.md              # Detailed implementation plan
-└── aidbox/                  # FHIR seed data
-    └── seed/
+├── aidbox/                  # FHIR seed data
+│   └── seed/
+├── Dockerfile               # Docker image for app (backend + frontend)
+└── docker-compose.yaml      # Multi-container orchestration
 ```
 
 ## Documentation
