@@ -26,8 +26,7 @@ runcmd:
   - ufw allow 80/tcp
   - ufw allow 443/tcp
   - ufw allow 8080/tcp   # Aidbox
-  - ufw allow 3000/tcp   # OpenClaw
-  - ufw allow 5678/tcp   # n8n
+  - ufw allow 3000/tcp   # App
   - ufw --force enable
 
   # Install Docker
@@ -176,21 +175,8 @@ write_files:
           ports:
             - "8080:8080"
 
-        # n8n Workflow Automation
-        n8n:
-          image: n8nio/n8n:latest
-          environment:
-            - N8N_BASIC_AUTH_ACTIVE=true
-            - N8N_BASIC_AUTH_USER=admin
-            - N8N_BASIC_AUTH_PASSWORD=ignis2026
-          ports:
-            - "5678:5678"
-          volumes:
-            - n8n_data:/home/node/.n8n
-
       volumes:
         postgres_data:
-        n8n_data:
 
   # MOTD
   - path: /etc/motd
@@ -210,7 +196,6 @@ write_files:
 
       Services:
         Aidbox:   http://localhost:8080
-        n8n:      http://localhost:5678 (admin/ignis2026)
 
       Team tmux:
         tmux new -s ignis    - Create shared session

@@ -92,7 +92,7 @@ log "Stopping existing services..."
 docker compose down --remove-orphans 2>/dev/null || true
 
 # Start all services
-log "Starting all services (db, aidbox, n8n, nginx)..."
+log "Starting all services (db, aidbox, app, nginx)..."
 docker compose up -d
 
 # Wait for Aidbox to be healthy
@@ -155,7 +155,6 @@ if [[ "$SSL_ENABLED" == "true" ]]; then
     echo "  Landing:    https://$DOMAIN/"
     echo "  Aidbox UI:  https://$DOMAIN/aidbox/"
     echo "  FHIR API:   https://$DOMAIN/fhir/"
-    echo "  n8n:        https://$DOMAIN/n8n/"
     echo ""
     echo "  HTTP requests will redirect to HTTPS automatically."
 else
@@ -164,7 +163,6 @@ else
     echo "  Landing:    http://$SERVER_IP/"
     echo "  Aidbox UI:  http://$SERVER_IP/aidbox/"
     echo "  FHIR API:   http://$SERVER_IP/fhir/"
-    echo "  n8n:        http://$SERVER_IP/n8n/"
     echo ""
     if [[ -n "$DOMAIN" ]]; then
         echo "  To enable HTTPS, run: ./infra/setup-ssl.sh"
@@ -174,7 +172,6 @@ echo ""
 echo "  Credentials:"
 echo "  ------------"
 echo "  Aidbox:     $AIDBOX_USER / $AIDBOX_PASS"
-echo "  n8n:        admin / ignis2026"
 echo ""
 echo "  For developers (.env.development):"
 echo "  -----------------------------------"
