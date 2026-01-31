@@ -1,4 +1,4 @@
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { UserPlus, CalendarPlus, FileText } from "lucide-react"
 
 // Essential actions only
@@ -22,11 +22,11 @@ const actions = [
 ]
 
 export function QuickActions() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const handleClick = (action: typeof actions[0]) => {
     if (action.href) {
-      router.push(action.href)
+      navigate(action.href)
     }
   }
 

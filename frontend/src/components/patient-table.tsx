@@ -1,6 +1,4 @@
-"use client"
-
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { MoreHorizontal, Phone, FileText, Calendar } from "lucide-react"
 import {
   Table,
@@ -140,10 +138,10 @@ function getTriageBadge(triage: Patient["triage"]) {
 }
 
 export function PatientTable() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const handlePatientClick = (patientId: string) => {
-    router.push(`/patient/${patientId}`)
+    navigate(`/patient/${patientId}`)
   }
 
   return (

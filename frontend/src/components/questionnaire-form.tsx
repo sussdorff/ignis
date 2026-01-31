@@ -1,11 +1,9 @@
-"use client"
-
-import React, { useState } from "react"
+import { useState } from "react"
 import { ChevronRight, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { type Question, type QuestionOption } from "@/lib/questionnaire-data"
+import { type Question } from "@/lib/questionnaire-data"
 
 interface QuestionnaireFormProps {
   question: Question

@@ -1,6 +1,3 @@
-"use client"
-
-import React from "react"
 import { CheckCircle, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type QuestionnaireResponse } from "@/lib/questionnaire-data"

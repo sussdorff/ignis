@@ -1,9 +1,5 @@
-import Link from "next/link"
-
-import React from "react"
-
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Phone, Mail, AlertTriangle, Play, User, CheckCircle } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -34,7 +30,7 @@ interface PatientHeaderProps {
 }
 
 export function PatientProfileHeader({ patient }: PatientHeaderProps) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [editingField, setEditingField] = useState<string | null>(null)
   const [patientData, setPatientData] = useState(patient)
   const [status, setStatus] = useState<Status>(patient.status || "wartend")
@@ -111,7 +107,7 @@ export function PatientProfileHeader({ patient }: PatientHeaderProps) {
       setStatus("in_behandlung")
     } else {
       // Could navigate back or show completion message
-      router.back()
+      navigate(-1)
     }
   }
 
@@ -167,7 +163,7 @@ export function PatientProfileHeader({ patient }: PatientHeaderProps) {
       <div className="p-6">
         {/* Back navigation */}
         <button 
-          onClick={() => router.back()}
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
         >
           <ArrowLeft className="size-4" />
@@ -280,7 +276,10 @@ export function PatientProfileHeader({ patient }: PatientHeaderProps) {
                     : "bg-success hover:bg-success/90"
               }
             >
-              {React.createElement(statusConfig[status].icon, { className: "size-4 mr-2" })}
+              {(() => {
+                const Icon = statusConfig[status].icon
+                return <Icon className="size-4 mr-2" />
+              })()}
               {statusConfig[status].nextAction}
             </Button>
 
