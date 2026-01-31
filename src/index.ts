@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import patients from './routes/patients'
 import { serveStatic } from 'hono/bun'
 
 const app = new Hono()
@@ -15,8 +16,8 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // API routes
 app.get('/api', (c) => c.json({ message: 'Ignis API', version: '0.1.0' }))
 
-// Patient routes (to be implemented)
-app.get('/api/patients', (c) => c.json({ patients: [], message: 'Not implemented yet' }))
+// Patient routes (per OpenAPI spec: patient_lookup, patient_create_or_update)
+app.route('/api/patients', patients)
 
 // Appointment routes (to be implemented)
 app.get('/api/appointments', (c) => c.json({ appointments: [], message: 'Not implemented yet' }))
