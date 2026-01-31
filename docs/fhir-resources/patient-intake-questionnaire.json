@@ -1,0 +1,788 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "patient-intake-de",
+  "url": "https://ignis.cognovis.de/fhir/Questionnaire/patient-intake-de",
+  "version": "1.0.0",
+  "name": "PatientIntakeDE",
+  "title": "Patientenaufnahme - Anamnese",
+  "status": "active",
+  "subjectType": ["Patient"],
+  "date": "2025-01-31",
+  "publisher": "Ignis Healthcare",
+  "description": "Fragebogen zur Patientenaufnahme mit dynamischen Fragen. Optimiert für Web-Formulare und Voice-Agent-Integration.",
+  "purpose": "Erfassung der Patientenanamnese bei Erstaufnahme",
+  "item": [
+    {
+      "linkId": "section-personal",
+      "text": "Persönliche Angaben",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "visit-reason",
+          "text": "Was ist der Hauptgrund für Ihren heutigen Besuch?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "acute", "display": "Akute Beschwerden"}},
+            {"valueCoding": {"code": "checkup", "display": "Vorsorgeuntersuchung"}},
+            {"valueCoding": {"code": "followup", "display": "Nachuntersuchung"}},
+            {"valueCoding": {"code": "prescription", "display": "Rezept/Überweisung"}},
+            {"valueCoding": {"code": "other", "display": "Sonstiges"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "radio-button", "display": "Radio Button"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "visit-reason-other",
+          "text": "Bitte beschreiben Sie den Grund:",
+          "type": "string",
+          "enableWhen": [
+            {
+              "question": "visit-reason",
+              "operator": "=",
+              "answerCoding": {"code": "other"}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-symptoms",
+      "text": "Aktuelle Beschwerden",
+      "type": "group",
+      "enableWhen": [
+        {
+          "question": "visit-reason",
+          "operator": "=",
+          "answerCoding": {"code": "acute"}
+        }
+      ],
+      "item": [
+        {
+          "linkId": "symptom-location",
+          "text": "Wo haben Sie Beschwerden?",
+          "type": "choice",
+          "required": true,
+          "repeats": true,
+          "answerOption": [
+            {"valueCoding": {"code": "head", "display": "Kopf"}},
+            {"valueCoding": {"code": "chest", "display": "Brust/Brustkorb"}},
+            {"valueCoding": {"code": "abdomen", "display": "Bauch"}},
+            {"valueCoding": {"code": "back", "display": "Rücken"}},
+            {"valueCoding": {"code": "extremities", "display": "Arme/Beine"}},
+            {"valueCoding": {"code": "throat", "display": "Hals/Rachen"}},
+            {"valueCoding": {"code": "skin", "display": "Haut"}},
+            {"valueCoding": {"code": "general", "display": "Allgemein/Ganzer Körper"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "check-box", "display": "Check Box"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "symptom-type-head",
+          "text": "Welche Art von Kopfbeschwerden haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "symptom-location",
+              "operator": "=",
+              "answerCoding": {"code": "head"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "headache", "display": "Kopfschmerzen"}},
+            {"valueCoding": {"code": "dizziness", "display": "Schwindel"}},
+            {"valueCoding": {"code": "vision", "display": "Sehstörungen"}},
+            {"valueCoding": {"code": "hearing", "display": "Hörstörungen"}},
+            {"valueCoding": {"code": "migraine", "display": "Migräne"}}
+          ]
+        },
+        {
+          "linkId": "symptom-type-chest",
+          "text": "Welche Art von Brustbeschwerden haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "symptom-location",
+              "operator": "=",
+              "answerCoding": {"code": "chest"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "chest-pain", "display": "Brustschmerzen"}},
+            {"valueCoding": {"code": "breathing", "display": "Atemnot"}},
+            {"valueCoding": {"code": "cough", "display": "Husten"}},
+            {"valueCoding": {"code": "palpitations", "display": "Herzrasen/Herzstolpern"}},
+            {"valueCoding": {"code": "pressure", "display": "Druckgefühl"}}
+          ]
+        },
+        {
+          "linkId": "symptom-type-abdomen",
+          "text": "Welche Art von Bauchbeschwerden haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "symptom-location",
+              "operator": "=",
+              "answerCoding": {"code": "abdomen"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "pain", "display": "Bauchschmerzen"}},
+            {"valueCoding": {"code": "nausea", "display": "Übelkeit"}},
+            {"valueCoding": {"code": "vomiting", "display": "Erbrechen"}},
+            {"valueCoding": {"code": "diarrhea", "display": "Durchfall"}},
+            {"valueCoding": {"code": "constipation", "display": "Verstopfung"}},
+            {"valueCoding": {"code": "bloating", "display": "Blähungen"}}
+          ]
+        },
+        {
+          "linkId": "symptom-type-throat",
+          "text": "Welche Art von Halsbeschwerden haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "symptom-location",
+              "operator": "=",
+              "answerCoding": {"code": "throat"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "sore-throat", "display": "Halsschmerzen"}},
+            {"valueCoding": {"code": "swallowing", "display": "Schluckbeschwerden"}},
+            {"valueCoding": {"code": "hoarseness", "display": "Heiserkeit"}},
+            {"valueCoding": {"code": "swelling", "display": "Schwellung"}}
+          ]
+        },
+        {
+          "linkId": "symptom-duration",
+          "text": "Seit wann haben Sie diese Beschwerden?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "today", "display": "Seit heute"}},
+            {"valueCoding": {"code": "days", "display": "Seit einigen Tagen (2-7 Tage)"}},
+            {"valueCoding": {"code": "weeks", "display": "Seit Wochen (1-4 Wochen)"}},
+            {"valueCoding": {"code": "months", "display": "Seit Monaten"}},
+            {"valueCoding": {"code": "chronic", "display": "Länger als 6 Monate"}}
+          ]
+        },
+        {
+          "linkId": "symptom-severity",
+          "text": "Wie stark sind Ihre Beschwerden auf einer Skala von 1-10?",
+          "type": "integer",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/minValue",
+              "valueInteger": 1
+            },
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/maxValue",
+              "valueInteger": 10
+            }
+          ]
+        },
+        {
+          "linkId": "symptom-fever",
+          "text": "Haben Sie Fieber?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "no", "display": "Nein"}},
+            {"valueCoding": {"code": "mild", "display": "Leicht erhöht (37.5-38°C)"}},
+            {"valueCoding": {"code": "moderate", "display": "Mäßig (38-39°C)"}},
+            {"valueCoding": {"code": "high", "display": "Hoch (über 39°C)"}},
+            {"valueCoding": {"code": "unknown", "display": "Nicht gemessen"}}
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-medical-history",
+      "text": "Vorerkrankungen",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "has-chronic-conditions",
+          "text": "Haben Sie bekannte Vorerkrankungen?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "chronic-conditions",
+          "text": "Welche Vorerkrankungen haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "has-chronic-conditions",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "diabetes", "display": "Diabetes mellitus"}},
+            {"valueCoding": {"code": "hypertension", "display": "Bluthochdruck"}},
+            {"valueCoding": {"code": "heart-disease", "display": "Herzerkrankung"}},
+            {"valueCoding": {"code": "asthma", "display": "Asthma"}},
+            {"valueCoding": {"code": "copd", "display": "COPD"}},
+            {"valueCoding": {"code": "cancer", "display": "Krebserkrankung"}},
+            {"valueCoding": {"code": "thyroid", "display": "Schilddrüsenerkrankung"}},
+            {"valueCoding": {"code": "kidney", "display": "Nierenerkrankung"}},
+            {"valueCoding": {"code": "liver", "display": "Lebererkrankung"}},
+            {"valueCoding": {"code": "depression", "display": "Depression/Angststörung"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "check-box", "display": "Check Box"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "chronic-conditions-other",
+          "text": "Welche anderen Vorerkrankungen?",
+          "type": "string",
+          "enableWhen": [
+            {
+              "question": "chronic-conditions",
+              "operator": "=",
+              "answerCoding": {"code": "other"}
+            }
+          ]
+        },
+        {
+          "linkId": "diabetes-type",
+          "text": "Welcher Diabetes-Typ?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "chronic-conditions",
+              "operator": "=",
+              "answerCoding": {"code": "diabetes"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "type1", "display": "Typ 1"}},
+            {"valueCoding": {"code": "type2", "display": "Typ 2"}},
+            {"valueCoding": {"code": "gestational", "display": "Schwangerschaftsdiabetes"}},
+            {"valueCoding": {"code": "unknown", "display": "Unbekannt"}}
+          ]
+        },
+        {
+          "linkId": "diabetes-treatment",
+          "text": "Wie wird Ihr Diabetes behandelt?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "chronic-conditions",
+              "operator": "=",
+              "answerCoding": {"code": "diabetes"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "diet", "display": "Nur Diät"}},
+            {"valueCoding": {"code": "oral", "display": "Tabletten"}},
+            {"valueCoding": {"code": "insulin", "display": "Insulin"}},
+            {"valueCoding": {"code": "combined", "display": "Tabletten und Insulin"}}
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-medications",
+      "text": "Aktuelle Medikation",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "takes-medications",
+          "text": "Nehmen Sie regelmäßig Medikamente ein?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "medication-categories",
+          "text": "Welche Art von Medikamenten nehmen Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "takes-medications",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "blood-pressure", "display": "Blutdruckmedikamente"}},
+            {"valueCoding": {"code": "blood-thinner", "display": "Blutverdünner"}},
+            {"valueCoding": {"code": "diabetes-meds", "display": "Diabetesmedikamente"}},
+            {"valueCoding": {"code": "painkillers", "display": "Schmerzmittel"}},
+            {"valueCoding": {"code": "antidepressants", "display": "Antidepressiva"}},
+            {"valueCoding": {"code": "thyroid-meds", "display": "Schilddrüsenmedikamente"}},
+            {"valueCoding": {"code": "cholesterol", "display": "Cholesterinsenker"}},
+            {"valueCoding": {"code": "inhalers", "display": "Inhalatoren/Asthma-Spray"}},
+            {"valueCoding": {"code": "hormones", "display": "Hormone (z.B. Pille, HRT)"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "check-box", "display": "Check Box"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "blood-thinner-type",
+          "text": "Welchen Blutverdünner nehmen Sie?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "medication-categories",
+              "operator": "=",
+              "answerCoding": {"code": "blood-thinner"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "aspirin", "display": "Aspirin/ASS"}},
+            {"valueCoding": {"code": "marcumar", "display": "Marcumar/Falithrom"}},
+            {"valueCoding": {"code": "xarelto", "display": "Xarelto (Rivaroxaban)"}},
+            {"valueCoding": {"code": "eliquis", "display": "Eliquis (Apixaban)"}},
+            {"valueCoding": {"code": "pradaxa", "display": "Pradaxa (Dabigatran)"}},
+            {"valueCoding": {"code": "other", "display": "Anderer"}}
+          ]
+        },
+        {
+          "linkId": "medication-details",
+          "text": "Bitte nennen Sie alle Medikamente mit Dosierung:",
+          "type": "text",
+          "enableWhen": [
+            {
+              "question": "takes-medications",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-allergies",
+      "text": "Allergien und Unverträglichkeiten",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "has-allergies",
+          "text": "Haben Sie Allergien oder Unverträglichkeiten?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "allergy-types",
+          "text": "Welche Art von Allergien haben Sie?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "has-allergies",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "medication", "display": "Medikamentenallergie"}},
+            {"valueCoding": {"code": "food", "display": "Nahrungsmittelallergie"}},
+            {"valueCoding": {"code": "pollen", "display": "Pollenallergie/Heuschnupfen"}},
+            {"valueCoding": {"code": "dust", "display": "Hausstauballergie"}},
+            {"valueCoding": {"code": "animal", "display": "Tierhaarallergie"}},
+            {"valueCoding": {"code": "latex", "display": "Latexallergie"}},
+            {"valueCoding": {"code": "contrast", "display": "Kontrastmittelallergie"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "check-box", "display": "Check Box"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "medication-allergy-details",
+          "text": "Gegen welche Medikamente sind Sie allergisch?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "allergy-types",
+              "operator": "=",
+              "answerCoding": {"code": "medication"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "penicillin", "display": "Penicillin/Antibiotika"}},
+            {"valueCoding": {"code": "aspirin", "display": "Aspirin/NSAR"}},
+            {"valueCoding": {"code": "ibuprofen", "display": "Ibuprofen"}},
+            {"valueCoding": {"code": "sulfonamide", "display": "Sulfonamide"}},
+            {"valueCoding": {"code": "codeine", "display": "Codein/Opiate"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ]
+        },
+        {
+          "linkId": "medication-allergy-other",
+          "text": "Welche anderen Medikamente?",
+          "type": "string",
+          "enableWhen": [
+            {
+              "question": "medication-allergy-details",
+              "operator": "=",
+              "answerCoding": {"code": "other"}
+            }
+          ]
+        },
+        {
+          "linkId": "allergy-reaction",
+          "text": "Wie äußert sich Ihre allergische Reaktion?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "has-allergies",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "rash", "display": "Hautausschlag"}},
+            {"valueCoding": {"code": "itching", "display": "Juckreiz"}},
+            {"valueCoding": {"code": "swelling", "display": "Schwellung"}},
+            {"valueCoding": {"code": "breathing", "display": "Atemnot"}},
+            {"valueCoding": {"code": "anaphylaxis", "display": "Anaphylaktischer Schock"}},
+            {"valueCoding": {"code": "gi", "display": "Magen-Darm-Beschwerden"}}
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-lifestyle",
+      "text": "Lebensstil",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "smoking-status",
+          "text": "Rauchen Sie?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "never", "display": "Nie geraucht"}},
+            {"valueCoding": {"code": "former", "display": "Früher geraucht"}},
+            {"valueCoding": {"code": "current", "display": "Ja, aktuell"}},
+            {"valueCoding": {"code": "occasional", "display": "Gelegentlich"}}
+          ]
+        },
+        {
+          "linkId": "smoking-amount",
+          "text": "Wie viele Zigaretten pro Tag?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "smoking-status",
+              "operator": "=",
+              "answerCoding": {"code": "current"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "1-5", "display": "1-5 Zigaretten"}},
+            {"valueCoding": {"code": "6-10", "display": "6-10 Zigaretten"}},
+            {"valueCoding": {"code": "11-20", "display": "11-20 Zigaretten"}},
+            {"valueCoding": {"code": "20+", "display": "Mehr als 20 Zigaretten"}}
+          ]
+        },
+        {
+          "linkId": "smoking-years",
+          "text": "Seit wie vielen Jahren rauchen Sie?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "smoking-status",
+              "operator": "=",
+              "answerCoding": {"code": "current"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "1-5", "display": "1-5 Jahre"}},
+            {"valueCoding": {"code": "6-10", "display": "6-10 Jahre"}},
+            {"valueCoding": {"code": "11-20", "display": "11-20 Jahre"}},
+            {"valueCoding": {"code": "20+", "display": "Mehr als 20 Jahre"}}
+          ]
+        },
+        {
+          "linkId": "smoking-quit-years",
+          "text": "Vor wie vielen Jahren haben Sie aufgehört?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "smoking-status",
+              "operator": "=",
+              "answerCoding": {"code": "former"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "1", "display": "Weniger als 1 Jahr"}},
+            {"valueCoding": {"code": "1-5", "display": "1-5 Jahre"}},
+            {"valueCoding": {"code": "5-10", "display": "5-10 Jahre"}},
+            {"valueCoding": {"code": "10+", "display": "Mehr als 10 Jahre"}}
+          ]
+        },
+        {
+          "linkId": "alcohol-status",
+          "text": "Trinken Sie Alkohol?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "never", "display": "Nie"}},
+            {"valueCoding": {"code": "rarely", "display": "Selten (weniger als 1x/Monat)"}},
+            {"valueCoding": {"code": "occasional", "display": "Gelegentlich (1-4x/Monat)"}},
+            {"valueCoding": {"code": "regular", "display": "Regelmäßig (mehrmals/Woche)"}},
+            {"valueCoding": {"code": "daily", "display": "Täglich"}}
+          ]
+        },
+        {
+          "linkId": "alcohol-amount",
+          "text": "Wie viele Gläser pro Woche durchschnittlich?",
+          "type": "choice",
+          "enableBehavior": "any",
+          "enableWhen": [
+            {
+              "question": "alcohol-status",
+              "operator": "=",
+              "answerCoding": {"code": "regular"}
+            },
+            {
+              "question": "alcohol-status",
+              "operator": "=",
+              "answerCoding": {"code": "daily"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "1-5", "display": "1-5 Gläser"}},
+            {"valueCoding": {"code": "6-10", "display": "6-10 Gläser"}},
+            {"valueCoding": {"code": "11-20", "display": "11-20 Gläser"}},
+            {"valueCoding": {"code": "20+", "display": "Mehr als 20 Gläser"}}
+          ]
+        },
+        {
+          "linkId": "exercise-status",
+          "text": "Wie oft treiben Sie Sport oder bewegen sich körperlich?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {"valueCoding": {"code": "never", "display": "Nie/Selten"}},
+            {"valueCoding": {"code": "1-2", "display": "1-2 mal pro Woche"}},
+            {"valueCoding": {"code": "3-4", "display": "3-4 mal pro Woche"}},
+            {"valueCoding": {"code": "daily", "display": "Täglich"}}
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-family-history",
+      "text": "Familiengeschichte",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "has-family-history",
+          "text": "Gibt es in Ihrer Familie bekannte Erkrankungen?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "family-conditions",
+          "text": "Welche Erkrankungen kommen in Ihrer Familie vor?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "has-family-history",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "heart-disease", "display": "Herzerkrankungen"}},
+            {"valueCoding": {"code": "stroke", "display": "Schlaganfall"}},
+            {"valueCoding": {"code": "diabetes", "display": "Diabetes"}},
+            {"valueCoding": {"code": "cancer", "display": "Krebs"}},
+            {"valueCoding": {"code": "hypertension", "display": "Bluthochdruck"}},
+            {"valueCoding": {"code": "mental-health", "display": "Psychische Erkrankungen"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [{"code": "check-box", "display": "Check Box"}]
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "family-cancer-type",
+          "text": "Welche Krebsart?",
+          "type": "choice",
+          "repeats": true,
+          "enableWhen": [
+            {
+              "question": "family-conditions",
+              "operator": "=",
+              "answerCoding": {"code": "cancer"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "breast", "display": "Brustkrebs"}},
+            {"valueCoding": {"code": "colon", "display": "Darmkrebs"}},
+            {"valueCoding": {"code": "lung", "display": "Lungenkrebs"}},
+            {"valueCoding": {"code": "prostate", "display": "Prostatakrebs"}},
+            {"valueCoding": {"code": "skin", "display": "Hautkrebs"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-women",
+      "text": "Fragen für Frauen",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "is-female",
+          "text": "Sind Sie weiblich?",
+          "type": "boolean"
+        },
+        {
+          "linkId": "pregnancy-possible",
+          "text": "Besteht die Möglichkeit einer Schwangerschaft?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "is-female",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "no", "display": "Nein"}},
+            {"valueCoding": {"code": "possible", "display": "Möglich"}},
+            {"valueCoding": {"code": "yes", "display": "Ja, ich bin schwanger"}},
+            {"valueCoding": {"code": "na", "display": "Nicht zutreffend (z.B. nach Menopause)"}}
+          ]
+        },
+        {
+          "linkId": "pregnancy-weeks",
+          "text": "In welcher Schwangerschaftswoche sind Sie?",
+          "type": "choice",
+          "enableWhen": [
+            {
+              "question": "pregnancy-possible",
+              "operator": "=",
+              "answerCoding": {"code": "yes"}
+            }
+          ],
+          "answerOption": [
+            {"valueCoding": {"code": "1-12", "display": "1-12 Wochen (1. Trimester)"}},
+            {"valueCoding": {"code": "13-26", "display": "13-26 Wochen (2. Trimester)"}},
+            {"valueCoding": {"code": "27-40", "display": "27-40 Wochen (3. Trimester)"}},
+            {"valueCoding": {"code": "unknown", "display": "Unbekannt"}}
+          ]
+        },
+        {
+          "linkId": "breastfeeding",
+          "text": "Stillen Sie derzeit?",
+          "type": "boolean",
+          "enableWhen": [
+            {
+              "question": "is-female",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "section-emergency",
+      "text": "Notfallkontakt",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "emergency-contact-name",
+          "text": "Name des Notfallkontakts:",
+          "type": "string"
+        },
+        {
+          "linkId": "emergency-contact-relationship",
+          "text": "Beziehung zum Patienten:",
+          "type": "choice",
+          "answerOption": [
+            {"valueCoding": {"code": "spouse", "display": "Ehepartner/Partner"}},
+            {"valueCoding": {"code": "parent", "display": "Elternteil"}},
+            {"valueCoding": {"code": "child", "display": "Kind"}},
+            {"valueCoding": {"code": "sibling", "display": "Geschwister"}},
+            {"valueCoding": {"code": "friend", "display": "Freund/Bekannter"}},
+            {"valueCoding": {"code": "other", "display": "Andere"}}
+          ]
+        },
+        {
+          "linkId": "emergency-contact-phone",
+          "text": "Telefonnummer des Notfallkontakts:",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "linkId": "section-consent",
+      "text": "Einwilligung",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "data-consent",
+          "text": "Ich stimme der Verarbeitung meiner Gesundheitsdaten zu Behandlungszwecken zu.",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "contact-consent",
+          "text": "Darf die Praxis Sie für Terminerinnerungen kontaktieren?",
+          "type": "choice",
+          "answerOption": [
+            {"valueCoding": {"code": "yes-all", "display": "Ja, per Telefon und SMS/E-Mail"}},
+            {"valueCoding": {"code": "phone-only", "display": "Nur per Telefon"}},
+            {"valueCoding": {"code": "email-only", "display": "Nur per E-Mail/SMS"}},
+            {"valueCoding": {"code": "no", "display": "Nein"}}
+          ]
+        }
+      ]
+    }
+  ]
+}

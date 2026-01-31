@@ -1,0 +1,431 @@
+{
+  "questionnaire_id": "patient-intake-de",
+  "description": "Voice Agent Mapping - Erwartete Antworten und Synonyme für Spracherkennung",
+  "usage": "Nutze dieses Mapping um Voice-Antworten den FHIR-Codes zuzuordnen",
+  "questions": [
+    {
+      "linkId": "visit-reason",
+      "question_text": "Was ist der Hauptgrund für Ihren heutigen Besuch?",
+      "voice_prompt": "Was ist der Hauptgrund für Ihren heutigen Besuch? Haben Sie akute Beschwerden, kommen Sie zur Vorsorge, zur Nachuntersuchung, oder benötigen Sie ein Rezept?",
+      "options": [
+        {
+          "code": "acute",
+          "display": "Akute Beschwerden",
+          "synonyms": ["akut", "krank", "beschwerden", "schmerzen", "probleme", "es geht mir nicht gut", "mir geht es schlecht"]
+        },
+        {
+          "code": "checkup",
+          "display": "Vorsorgeuntersuchung",
+          "synonyms": ["vorsorge", "check-up", "checkup", "gesundheitscheck", "routineuntersuchung", "zur kontrolle"]
+        },
+        {
+          "code": "followup",
+          "display": "Nachuntersuchung",
+          "synonyms": ["nachkontrolle", "kontrolle", "nachuntersuchung", "wiedervorstellung", "folgetermin"]
+        },
+        {
+          "code": "prescription",
+          "display": "Rezept/Überweisung",
+          "synonyms": ["rezept", "überweisung", "medikamente", "verordnung"]
+        },
+        {
+          "code": "other",
+          "display": "Sonstiges",
+          "synonyms": ["sonstiges", "anderes", "etwas anderes"]
+        }
+      ],
+      "fallback_prompt": "Ich habe Sie nicht ganz verstanden. Kommen Sie wegen akuten Beschwerden, zur Vorsorge, zur Nachuntersuchung, oder brauchen Sie ein Rezept?"
+    },
+    {
+      "linkId": "symptom-location",
+      "question_text": "Wo haben Sie Beschwerden?",
+      "voice_prompt": "Wo genau haben Sie Beschwerden? Zum Beispiel am Kopf, in der Brust, im Bauch, am Rücken, an Armen oder Beinen, im Hals, an der Haut, oder allgemein?",
+      "multi_select": true,
+      "options": [
+        {
+          "code": "head",
+          "display": "Kopf",
+          "synonyms": ["kopf", "kopfschmerzen", "gesicht", "stirn", "schläfe"]
+        },
+        {
+          "code": "chest",
+          "display": "Brust/Brustkorb",
+          "synonyms": ["brust", "brustkorb", "herz", "lunge", "rippen"]
+        },
+        {
+          "code": "abdomen",
+          "display": "Bauch",
+          "synonyms": ["bauch", "magen", "darm", "unterleib", "magenschmerzen", "bauchschmerzen"]
+        },
+        {
+          "code": "back",
+          "display": "Rücken",
+          "synonyms": ["rücken", "wirbelsäule", "kreuz", "nacken", "rückenschmerzen"]
+        },
+        {
+          "code": "extremities",
+          "display": "Arme/Beine",
+          "synonyms": ["arm", "arme", "bein", "beine", "hand", "fuß", "füße", "knie", "schulter", "gelenke"]
+        },
+        {
+          "code": "throat",
+          "display": "Hals/Rachen",
+          "synonyms": ["hals", "rachen", "mandeln", "halsschmerzen", "kehle"]
+        },
+        {
+          "code": "skin",
+          "display": "Haut",
+          "synonyms": ["haut", "ausschlag", "jucken", "ekzem", "hautprobleme"]
+        },
+        {
+          "code": "general",
+          "display": "Allgemein/Ganzer Körper",
+          "synonyms": ["allgemein", "überall", "ganzer körper", "müde", "erschöpft", "fieber"]
+        }
+      ]
+    },
+    {
+      "linkId": "symptom-duration",
+      "question_text": "Seit wann haben Sie diese Beschwerden?",
+      "voice_prompt": "Seit wann haben Sie diese Beschwerden? Seit heute, seit einigen Tagen, seit Wochen, seit Monaten, oder schon länger?",
+      "options": [
+        {
+          "code": "today",
+          "display": "Seit heute",
+          "synonyms": ["heute", "gerade", "eben", "seit heute morgen", "seit heute früh", "seit ein paar stunden"]
+        },
+        {
+          "code": "days",
+          "display": "Seit einigen Tagen (2-7 Tage)",
+          "synonyms": ["seit tagen", "ein paar tage", "seit gestern", "vorgestern", "diese woche", "zwei tage", "drei tage"]
+        },
+        {
+          "code": "weeks",
+          "display": "Seit Wochen (1-4 Wochen)",
+          "synonyms": ["seit wochen", "eine woche", "zwei wochen", "letzte woche", "seit einer woche"]
+        },
+        {
+          "code": "months",
+          "display": "Seit Monaten",
+          "synonyms": ["seit monaten", "ein paar monate", "mehrere monate", "seit einem monat", "seit zwei monaten"]
+        },
+        {
+          "code": "chronic",
+          "display": "Länger als 6 Monate",
+          "synonyms": ["chronisch", "schon lange", "seit jahren", "immer wieder", "dauerhaft", "sehr lange"]
+        }
+      ]
+    },
+    {
+      "linkId": "symptom-severity",
+      "question_text": "Wie stark sind Ihre Beschwerden auf einer Skala von 1-10?",
+      "voice_prompt": "Auf einer Skala von 1 bis 10, wobei 1 ganz leicht und 10 unerträglich ist - wie stark sind Ihre Beschwerden?",
+      "type": "integer",
+      "min": 1,
+      "max": 10,
+      "synonyms_mapping": {
+        "leicht": 2,
+        "mild": 3,
+        "etwas": 3,
+        "mittel": 5,
+        "mäßig": 5,
+        "stark": 7,
+        "sehr stark": 8,
+        "extrem": 9,
+        "unerträglich": 10
+      },
+      "fallback_prompt": "Bitte nennen Sie eine Zahl zwischen 1 und 10. 1 bedeutet kaum spürbar, 10 bedeutet unerträgliche Schmerzen."
+    },
+    {
+      "linkId": "symptom-fever",
+      "question_text": "Haben Sie Fieber?",
+      "voice_prompt": "Haben Sie Fieber gemessen? Wenn ja, wie hoch war es?",
+      "options": [
+        {
+          "code": "no",
+          "display": "Nein",
+          "synonyms": ["nein", "kein fieber", "normale temperatur", "nein habe ich nicht"]
+        },
+        {
+          "code": "mild",
+          "display": "Leicht erhöht (37.5-38°C)",
+          "synonyms": ["leicht erhöht", "etwas erhöht", "37", "38 grad", "knapp unter 38"]
+        },
+        {
+          "code": "moderate",
+          "display": "Mäßig (38-39°C)",
+          "synonyms": ["38", "39", "fieber", "38 grad", "39 grad"]
+        },
+        {
+          "code": "high",
+          "display": "Hoch (über 39°C)",
+          "synonyms": ["hohes fieber", "über 39", "40", "sehr hoch"]
+        },
+        {
+          "code": "unknown",
+          "display": "Nicht gemessen",
+          "synonyms": ["nicht gemessen", "weiß nicht", "kein thermometer", "keine ahnung"]
+        }
+      ]
+    },
+    {
+      "linkId": "has-chronic-conditions",
+      "question_text": "Haben Sie bekannte Vorerkrankungen?",
+      "voice_prompt": "Haben Sie bekannte Vorerkrankungen wie zum Beispiel Diabetes, Bluthochdruck, oder Herzprobleme?",
+      "type": "boolean",
+      "yes_synonyms": ["ja", "habe ich", "einige", "mehrere", "ja genau"],
+      "no_synonyms": ["nein", "keine", "nein habe ich nicht", "nicht dass ich wüsste"]
+    },
+    {
+      "linkId": "chronic-conditions",
+      "question_text": "Welche Vorerkrankungen haben Sie?",
+      "voice_prompt": "Welche Vorerkrankungen haben Sie? Zum Beispiel Diabetes, Bluthochdruck, Herzerkrankungen, Asthma, oder andere?",
+      "multi_select": true,
+      "options": [
+        {
+          "code": "diabetes",
+          "display": "Diabetes mellitus",
+          "synonyms": ["diabetes", "zucker", "zuckerkrank", "blutzucker"]
+        },
+        {
+          "code": "hypertension",
+          "display": "Bluthochdruck",
+          "synonyms": ["bluthochdruck", "hoher blutdruck", "hypertonie"]
+        },
+        {
+          "code": "heart-disease",
+          "display": "Herzerkrankung",
+          "synonyms": ["herz", "herzprobleme", "herzinfarkt", "herzinsuffizienz", "herzschwäche"]
+        },
+        {
+          "code": "asthma",
+          "display": "Asthma",
+          "synonyms": ["asthma", "astma"]
+        },
+        {
+          "code": "copd",
+          "display": "COPD",
+          "synonyms": ["copd", "lungenerkrankung", "raucherlunge", "emphysem"]
+        },
+        {
+          "code": "cancer",
+          "display": "Krebserkrankung",
+          "synonyms": ["krebs", "tumor", "krebserkrankung"]
+        },
+        {
+          "code": "thyroid",
+          "display": "Schilddrüsenerkrankung",
+          "synonyms": ["schilddrüse", "überfunktion", "unterfunktion", "hashimoto"]
+        },
+        {
+          "code": "kidney",
+          "display": "Nierenerkrankung",
+          "synonyms": ["niere", "nieren", "niereninsuffizienz", "dialyse"]
+        },
+        {
+          "code": "liver",
+          "display": "Lebererkrankung",
+          "synonyms": ["leber", "hepatitis", "leberzirrhose"]
+        },
+        {
+          "code": "depression",
+          "display": "Depression/Angststörung",
+          "synonyms": ["depression", "depressionen", "angst", "angststörung", "panikattacken", "psychisch"]
+        },
+        {
+          "code": "other",
+          "display": "Andere",
+          "synonyms": ["andere", "sonstige", "etwas anderes"]
+        }
+      ]
+    },
+    {
+      "linkId": "takes-medications",
+      "question_text": "Nehmen Sie regelmäßig Medikamente ein?",
+      "voice_prompt": "Nehmen Sie regelmäßig Medikamente ein?",
+      "type": "boolean",
+      "yes_synonyms": ["ja", "mehrere", "täglich", "jeden tag", "verschiedene"],
+      "no_synonyms": ["nein", "keine", "nichts"]
+    },
+    {
+      "linkId": "has-allergies",
+      "question_text": "Haben Sie Allergien oder Unverträglichkeiten?",
+      "voice_prompt": "Haben Sie Allergien oder Unverträglichkeiten? Zum Beispiel gegen Medikamente, Nahrungsmittel, oder Pollen?",
+      "type": "boolean",
+      "yes_synonyms": ["ja", "einige", "mehrere", "gegen penicillin", "medikamentenallergie"],
+      "no_synonyms": ["nein", "keine", "nicht dass ich wüsste"]
+    },
+    {
+      "linkId": "allergy-types",
+      "question_text": "Welche Art von Allergien haben Sie?",
+      "voice_prompt": "Gegen was sind Sie allergisch? Medikamente, Nahrungsmittel, Pollen, oder etwas anderes?",
+      "multi_select": true,
+      "options": [
+        {
+          "code": "medication",
+          "display": "Medikamentenallergie",
+          "synonyms": ["medikamente", "tabletten", "penicillin", "antibiotika"]
+        },
+        {
+          "code": "food",
+          "display": "Nahrungsmittelallergie",
+          "synonyms": ["essen", "nahrungsmittel", "nüsse", "erdnüsse", "milch", "gluten", "laktose"]
+        },
+        {
+          "code": "pollen",
+          "display": "Pollenallergie/Heuschnupfen",
+          "synonyms": ["pollen", "heuschnupfen", "gräser", "blüten", "frühling"]
+        },
+        {
+          "code": "dust",
+          "display": "Hausstauballergie",
+          "synonyms": ["hausstaub", "milben", "staub"]
+        },
+        {
+          "code": "animal",
+          "display": "Tierhaarallergie",
+          "synonyms": ["tierhaare", "katzen", "hunde", "tiere"]
+        },
+        {
+          "code": "latex",
+          "display": "Latexallergie",
+          "synonyms": ["latex", "gummi"]
+        },
+        {
+          "code": "contrast",
+          "display": "Kontrastmittelallergie",
+          "synonyms": ["kontrastmittel", "röntgen", "ct", "mrt"]
+        },
+        {
+          "code": "other",
+          "display": "Andere",
+          "synonyms": ["andere", "sonstige"]
+        }
+      ]
+    },
+    {
+      "linkId": "smoking-status",
+      "question_text": "Rauchen Sie?",
+      "voice_prompt": "Rauchen Sie?",
+      "options": [
+        {
+          "code": "never",
+          "display": "Nie geraucht",
+          "synonyms": ["nein", "nie", "nichtraucher", "noch nie", "habe nie geraucht"]
+        },
+        {
+          "code": "former",
+          "display": "Früher geraucht",
+          "synonyms": ["früher", "aufgehört", "ex-raucher", "nicht mehr", "habe aufgehört"]
+        },
+        {
+          "code": "current",
+          "display": "Ja, aktuell",
+          "synonyms": ["ja", "rauche", "raucher", "täglich", "jeden tag"]
+        },
+        {
+          "code": "occasional",
+          "display": "Gelegentlich",
+          "synonyms": ["manchmal", "gelegentlich", "ab und zu", "selten", "nur am wochenende", "sozial"]
+        }
+      ]
+    },
+    {
+      "linkId": "alcohol-status",
+      "question_text": "Trinken Sie Alkohol?",
+      "voice_prompt": "Trinken Sie Alkohol?",
+      "options": [
+        {
+          "code": "never",
+          "display": "Nie",
+          "synonyms": ["nein", "nie", "gar nicht", "keinen alkohol"]
+        },
+        {
+          "code": "rarely",
+          "display": "Selten (weniger als 1x/Monat)",
+          "synonyms": ["selten", "kaum", "fast nie", "sehr selten"]
+        },
+        {
+          "code": "occasional",
+          "display": "Gelegentlich (1-4x/Monat)",
+          "synonyms": ["gelegentlich", "ab und zu", "manchmal", "am wochenende"]
+        },
+        {
+          "code": "regular",
+          "display": "Regelmäßig (mehrmals/Woche)",
+          "synonyms": ["regelmäßig", "öfter", "mehrmals die woche"]
+        },
+        {
+          "code": "daily",
+          "display": "Täglich",
+          "synonyms": ["täglich", "jeden tag", "abends"]
+        }
+      ]
+    },
+    {
+      "linkId": "is-female",
+      "question_text": "Sind Sie weiblich?",
+      "voice_prompt": "Darf ich fragen, ob Sie weiblich sind? Wir haben einige spezielle Fragen für Frauen.",
+      "type": "boolean",
+      "yes_synonyms": ["ja", "weiblich", "frau"],
+      "no_synonyms": ["nein", "männlich", "mann"]
+    },
+    {
+      "linkId": "pregnancy-possible",
+      "question_text": "Besteht die Möglichkeit einer Schwangerschaft?",
+      "voice_prompt": "Besteht bei Ihnen die Möglichkeit einer Schwangerschaft?",
+      "options": [
+        {
+          "code": "no",
+          "display": "Nein",
+          "synonyms": ["nein", "ausgeschlossen", "definitiv nicht", "nicht möglich"]
+        },
+        {
+          "code": "possible",
+          "display": "Möglich",
+          "synonyms": ["möglich", "vielleicht", "könnte sein", "weiß nicht genau"]
+        },
+        {
+          "code": "yes",
+          "display": "Ja, ich bin schwanger",
+          "synonyms": ["ja", "schwanger", "ich bin schwanger", "erwarte ein kind"]
+        },
+        {
+          "code": "na",
+          "display": "Nicht zutreffend (z.B. nach Menopause)",
+          "synonyms": ["nicht zutreffend", "menopause", "wechseljahre", "gebärmutter entfernt"]
+        }
+      ]
+    },
+    {
+      "linkId": "data-consent",
+      "question_text": "Ich stimme der Verarbeitung meiner Gesundheitsdaten zu Behandlungszwecken zu.",
+      "voice_prompt": "Zum Abschluss: Stimmen Sie zu, dass Ihre Gesundheitsdaten zur Behandlung verarbeitet werden dürfen?",
+      "type": "boolean",
+      "yes_synonyms": ["ja", "stimme zu", "einverstanden", "okay", "in ordnung"],
+      "no_synonyms": ["nein", "stimme nicht zu", "lehne ab"]
+    }
+  ],
+  "voice_agent_instructions": {
+    "general_guidance": [
+      "Spreche den Patienten höflich mit Sie an",
+      "Bei unklaren Antworten, nenne die möglichen Optionen",
+      "Bei Multiple-Choice-Fragen, bestätige die gewählten Optionen",
+      "Bei Integer-Fragen, akzeptiere auch Wörter wie 'stark' oder 'mittel' und mache das Mapping",
+      "Wenn eine Antwort keinem Synonym entspricht, frage nach oder biete Optionen an"
+    ],
+    "error_handling": [
+      "Bei Verständnisproblemen: 'Entschuldigung, ich habe Sie nicht ganz verstanden. Könnten Sie das bitte wiederholen?'",
+      "Bei ungültiger Option: 'Diese Antwort habe ich nicht in meiner Liste. Die möglichen Antworten sind: [Optionen]'",
+      "Bei Abbruch: 'Kein Problem. Möchten Sie die Befragung später fortsetzen oder lieber mit einem Mitarbeiter sprechen?'"
+    ],
+    "conditional_logic": {
+      "visit-reason=acute": "Zeige Symptom-Sektion",
+      "has-chronic-conditions=true": "Zeige Vorerkrankungs-Details",
+      "takes-medications=true": "Zeige Medikamenten-Details",
+      "has-allergies=true": "Zeige Allergie-Details",
+      "smoking-status=current": "Frage nach Menge und Dauer",
+      "is-female=true": "Zeige Frauen-spezifische Fragen"
+    }
+  }
+}

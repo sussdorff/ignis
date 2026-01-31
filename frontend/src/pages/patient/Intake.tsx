@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { createPatient } from '@/lib/api'
 
 export default function PatientIntake() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -27,10 +30,10 @@ export default function PatientIntake() {
         ...formData,
         urgency: 'regular',
       })
-      alert('Registrierung erfolgreich! Sie werden bald kontaktiert.')
+      alert(t('intake.successMessage'))
       navigate('/patient/book')
     } catch (error) {
-      alert('Fehler bei der Registrierung. Bitte versuchen Sie es erneut.')
+      alert(t('intake.errorMessage'))
     } finally {
       setLoading(false)
     }
@@ -43,20 +46,24 @@ export default function PatientIntake() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
       <div className="max-w-2xl mx-auto">
+        <div className="flex justify-end mb-4">
+          <LanguageSwitcher />
+        </div>
+
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">🔥 Ignis</h1>
-          <p className="text-lg text-gray-600">Patientenaufnahme</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">🔥 {t('app.title')}</h1>
+          <p className="text-lg text-gray-600">{t('intake.title')}</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Ihre Daten</CardTitle>
+            <CardTitle>{t('intake.subtitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">Vorname *</Label>
+                  <Label htmlFor="firstName">{t('intake.fields.firstName')} *</Label>
                   <Input
                     id="firstName"
                     required
@@ -65,7 +72,7 @@ export default function PatientIntake() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Nachname *</Label>
+                  <Label htmlFor="lastName">{t('intake.fields.lastName')} *</Label>
                   <Input
                     id="lastName"
                     required
@@ -76,19 +83,19 @@ export default function PatientIntake() {
               </div>
 
               <div>
-                <Label htmlFor="phone">Telefonnummer *</Label>
+                <Label htmlFor="phone">{t('intake.fields.phone')} *</Label>
                 <Input
                   id="phone"
                   type="tel"
                   required
-                  placeholder="+49..."
+                  placeholder={t('intake.phonePlaceholder')}
                   value={formData.phone}
                   onChange={e => handleChange('phone', e.target.value)}
                 />
               </div>
 
               <div>
-                <Label htmlFor="birthDate">Geburtsdatum *</Label>
+                <Label htmlFor="birthDate">{t('intake.fields.birthDate')} *</Label>
                 <Input
                   id="birthDate"
                   type="date"
@@ -99,7 +106,7 @@ export default function PatientIntake() {
               </div>
 
               <div>
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email">{t('intake.fields.email')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -109,7 +116,7 @@ export default function PatientIntake() {
               </div>
 
               <div>
-                <Label htmlFor="address">Adresse</Label>
+                <Label htmlFor="address">{t('intake.fields.address')}</Label>
                 <Input
                   id="address"
                   value={formData.address}
@@ -119,15 +126,14 @@ export default function PatientIntake() {
 
               <div className="pt-4">
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Wird gesendet...' : 'Registrierung abschließen'}
+                  {loading ? t('intake.submitting') : t('intake.submitButton')}
                 </Button>
               </div>
             </form>
 
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-gray-700">
-                💡 <strong>Hinweis:</strong> Sie können auch anrufen, um einen Termin zu vereinbaren. 
-                Unsere KI-Assistentin hilft Ihnen rund um die Uhr weiter.
+                💡 <strong>{t('common.required')}:</strong> {t('intake.hint')}
               </p>
             </div>
           </CardContent>
