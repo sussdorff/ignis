@@ -71,7 +71,9 @@ services:
       AIDBOX_BASE_URL: http://167.235.236.238/aidbox
       AIDBOX_PORT: 8080
       AIDBOX_FHIR_VERSION: 4.0.1
-      # Allow extra properties for Synthea data compatibility
+      # Disable strict FHIR Schema validation for Synthea data compatibility
+      # Use legacy validator which is more permissive with extra properties
+      AIDBOX_FHIR_SCHEMA_VALIDATION: "false"
       BOX_FEATURES_VALIDATION_SKIP__EXTRA: "true"
       PGHOST: aidbox-db
       PGPORT: 5432
