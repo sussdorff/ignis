@@ -200,9 +200,11 @@ async function run(): Promise<void> {
     fail('GET /api/appointments/slots urgency', e)
   }
 
+  // Use a future date so we don't collide with existing Aidbox appointments from prior runs
+  const bookSlotDate = '2027-02-01'
   try {
     const bookRes = await post('/api/appointments', {
-      slotId: 'stub-2026-02-01-0',
+      slotId: `stub-${bookSlotDate}-0`,
       patientId: 'patient-1',
     })
     assert(bookRes.status === 201, `book status ${bookRes.status}`)
@@ -214,8 +216,21 @@ async function run(): Promise<void> {
   }
 
   try {
+    const bookSameSlotRes = await post('/api/appointments', {
+      slotId: `stub-${bookSlotDate}-0`,
+      patientId: 'patient-2',
+    })
+    assert(bookSameSlotRes.status === 409, `book same slot twice should 409 (slot_unavailable), got ${bookSameSlotRes.status}`)
+    const conflictBody = (await bookSameSlotRes.json()) as { error?: string }
+    assert(conflictBody.error === 'slot_unavailable', 'book conflict returns slot_unavailable')
+    ok('POST /api/appointments (same slot again → 409 slot_unavailable)')
+  } catch (e) {
+    fail('POST /api/appointments book 409', e)
+  }
+
+  try {
     const bookBadPatientRes = await post('/api/appointments', {
-      slotId: 'stub-2026-02-01-0',
+      slotId: `stub-${bookSlotDate}-1`,
       patientId: 'nonexistent-patient',
     })
     assert(bookBadPatientRes.status === 404, `book unknown patient should 404, got ${bookBadPatientRes.status}`)

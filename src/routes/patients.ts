@@ -16,8 +16,16 @@ const patients = new Hono()
 // GET /api/patients - list all patients
 // =============================================================================
 patients.get('/', async (c) => {
-  const allPatients = await getAllPatients()
-  return c.json(allPatients, 200)
+  try {
+    const allPatients = await getAllPatients()
+    return c.json(allPatients, 200)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return c.json(
+      { error: 'internal', message: message.includes('abort') ? 'Aidbox request timed out' : 'Aidbox request failed' },
+      502
+    )
+  }
 })
 
 /** Build display name for greeting (e.g. "Herr Müller" / "Frau Weber"). */

@@ -17,15 +17,27 @@ const defaultHeaders: Record<string, string> = {
   Authorization: getAuthHeader(),
 }
 
+const FHIR_REQUEST_TIMEOUT_MS = 20_000
+
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit & { timeout?: number } = {}
+): Promise<Response> {
+  const { timeout = FHIR_REQUEST_TIMEOUT_MS, ...fetchInit } = init
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+  return fetch(url, { ...fetchInit, signal: controller.signal }).finally(() => clearTimeout(id))
+}
+
 /**
  * Low-level FHIR HTTP client for Aidbox (R4 4.0.1).
- * All methods throw on non-2xx responses.
+ * All methods throw on non-2xx responses. Requests timeout after 20s.
  */
 export const fhirClient = {
   /** GET [base]/[resourceType] or [base]/[resourceType]/[id] */
   async get<T>(path: string): Promise<T> {
     const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
-    const res = await fetch(url, { method: 'GET', headers: defaultHeaders })
+    const res = await fetchWithTimeout(url, { method: 'GET', headers: defaultHeaders })
     if (!res.ok) {
       const body = await res.text()
       throw new Error(`FHIR GET ${path} failed: ${res.status} ${res.statusText} - ${body}`)
@@ -36,7 +48,7 @@ export const fhirClient = {
   /** POST [base]/[resourceType] (create) */
   async post<T>(path: string, body: unknown): Promise<T> {
     const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: defaultHeaders,
       body: JSON.stringify(body),
@@ -51,7 +63,7 @@ export const fhirClient = {
   /** PUT [base]/[resourceType]/[id] (update) */
   async put<T>(path: string, body: unknown): Promise<T> {
     const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'PUT',
       headers: defaultHeaders,
       body: JSON.stringify(body),

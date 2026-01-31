@@ -118,7 +118,7 @@ export async function getUpcomingAppointment(patientId: string): Promise<{
  * Get all patients from Aidbox (FHIR search with no filters).
  */
 export async function getAllPatients(): Promise<FHIRPatient[]> {
-  const bundle = (await fhirClient.get('Patient?_count=500')) as FHIRBundle
+  const bundle = (await fhirClient.get('Patient?_count=100')) as FHIRBundle
   const entries = bundle.entry ?? []
   return entries
     .map((e) => e.resource)

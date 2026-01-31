@@ -3,12 +3,9 @@ import {
   RequestCallbackRequestSchema,
   type RequestCallbackResponse,
 } from '../lib/schemas'
+import { createCallbackRequest } from '../lib/aidbox-tasks'
 
 const callback = new Hono()
-
-function randomId(): string {
-  return crypto.randomUUID()
-}
 
 // =============================================================================
 // POST /api/callback - request_callback
@@ -27,8 +24,16 @@ callback.post('/', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
+  const { phone, reason, category, patientId, patientName } = parsed.data
+  const task = await createCallbackRequest({
+    phone,
+    reason,
+    category,
+    patientId,
+    patientName,
+  })
   const response: RequestCallbackResponse = {
-    callbackId: randomId(),
+    callbackId: task.id ?? '',
     estimatedTime: 'within 2 hours',
     message: 'Wir rufen Sie innerhalb von 2 Stunden zurück.',
   }

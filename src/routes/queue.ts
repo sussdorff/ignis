@@ -6,12 +6,9 @@ import {
   type RegisterEmergencyResponse,
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
+import { createUrgentQueueEntry, createEmergencyTransfer } from '../lib/aidbox-tasks'
 
 const queue = new Hono()
-
-function randomId(): string {
-  return crypto.randomUUID()
-}
 
 // =============================================================================
 // POST /api/queue/urgent - add_to_urgent_queue
@@ -30,15 +27,16 @@ queue.post('/urgent', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { patientId } = parsed.data
+  const { patientId, reason, phone } = parsed.data
 
   const patient = await getPatientById(patientId)
   if (!patient) {
     return c.json({ error: 'not_found' }, 404)
   }
 
+  const task = await createUrgentQueueEntry({ patientId, reason, phone })
   const response: AddToUrgentQueueResponse = {
-    queueEntryId: randomId(),
+    queueEntryId: task.id ?? '',
     position: 1,
     message: 'Sie wurden in die dringende Warteschlange eingetragen. Wir rufen Sie zurück.',
   }
@@ -57,10 +55,15 @@ queue.post('/emergency', async (c) => {
   }
 
   const parsed = RegisterEmergencyRequestSchema.safeParse(body)
-  const _data = parsed.success ? parsed.data : {}
+  const data = parsed.success ? parsed.data : {}
 
+  const task = await createEmergencyTransfer({
+    patientId: data.patientId,
+    phone: data.phone,
+    reason: data.reason,
+  })
   const response: RegisterEmergencyResponse = {
-    transferId: randomId(),
+    transferId: task.id ?? '',
     message: 'Notfall erfasst. Sie werden mit einem Mitarbeiter verbunden.',
   }
   return c.json(response, 201)

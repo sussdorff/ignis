@@ -8,7 +8,7 @@ import {
   type CancelAppointmentResponse,
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
-import { cancelAppointment } from '../lib/aidbox-appointments'
+import { cancelAppointment, createAppointment } from '../lib/aidbox-appointments'
 
 const appointments = new Hono()
 
@@ -97,7 +97,7 @@ appointments.post('/', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { slotId, patientId } = parsed.data
+  const { slotId, patientId, practitionerId, type, reason } = parsed.data
 
   const times = stubSlotTimes(slotId)
   if (!times) {
@@ -115,17 +115,32 @@ appointments.post('/', async (c) => {
     )
   }
 
+  const pracId = practitionerId ?? STUB_PRACTITIONER_ID
+  const result = await createAppointment({
+    start: times.start,
+    end: times.end,
+    patientId,
+    practitionerId: pracId,
+    practitionerDisplay: STUB_PRACTITIONER_DISPLAY,
+    type: type ?? 'routine',
+    reason,
+  })
+
+  if (result.ok === false && result.code === 'slot_unavailable') {
+    return c.json({ error: 'slot_unavailable' }, 409)
+  }
+
+  const appt = result.appointment
   const response: BookAppointmentResponse = {
     appointment: {
-      resourceType: 'Appointment',
-      id: `stub-${Date.now()}`,
-      status: 'booked',
-      start: times.start,
-      end: times.end,
-      participant: [
-        { actor: { reference: `Patient/${patientId}` }, status: 'accepted' },
-        { actor: { reference: `Practitioner/${STUB_PRACTITIONER_ID}` }, status: 'accepted' },
-      ],
+      resourceType: appt.resourceType,
+      id: appt.id,
+      status: appt.status,
+      start: appt.start,
+      end: appt.end,
+      participant: appt.participant,
+      description: appt.description,
+      appointmentType: appt.appointmentType,
     },
     start: times.start,
     end: times.end,
