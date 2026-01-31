@@ -1,12 +1,35 @@
 #!/bin/bash
 # Setup all Ignis services with nginx reverse proxy
-# Usage: ./setup-services.sh
+# Usage: ./setup-services.sh [--with-synthea-data [count]]
+#
+# Options:
+#   --with-synthea-data [count]  Load Synthea patient bundles after setup
+#                                 count: number of patients (default: all 631)
 #
 # Prerequisites:
 #   - .env file with AIDBOX_LICENSE_KEY
 #   - Docker and docker-compose installed
 
 set -e
+
+# Parse arguments
+LOAD_SYNTHEA_DATA=false
+SYNTHEA_COUNT=0
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --with-synthea-data)
+            LOAD_SYNTHEA_DATA=true
+            if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                SYNTHEA_COUNT="$2"
+                shift
+            fi
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -172,3 +195,19 @@ else
     echo "    curl -u $AIDBOX_USER:$AIDBOX_PASS http://$SERVER_IP/fhir/Patient"
 fi
 echo ""
+
+# Load Synthea data if requested
+if [[ "$LOAD_SYNTHEA_DATA" == "true" ]]; then
+    echo ""
+    log "Loading Synthea patient data..."
+    if [[ -x "$SCRIPT_DIR/load-synthea-data.sh" ]]; then
+        if [[ "$SYNTHEA_COUNT" -gt 0 ]]; then
+            "$SCRIPT_DIR/load-synthea-data.sh" "$SYNTHEA_COUNT"
+        else
+            "$SCRIPT_DIR/load-synthea-data.sh"
+        fi
+    else
+        warn "load-synthea-data.sh not found or not executable"
+        warn "Run: chmod +x $SCRIPT_DIR/load-synthea-data.sh"
+    fi
+fi
