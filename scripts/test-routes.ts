@@ -200,16 +200,21 @@ async function run(): Promise<void> {
     fail('GET /api/appointments/slots urgency', e)
   }
 
-  // Use a future date so we don't collide with existing Aidbox appointments from prior runs
-  const bookSlotDate = '2027-02-01'
+  // Use a randomized far-future date to avoid collisions with real appointments or prior test runs
+  const randomMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
+  const randomDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')
+  const bookSlotDate = `2099-${randomMonth}-${randomDay}`
+  let bookedAppointmentId: string | null = null
+
   try {
     const bookRes = await post('/api/appointments', {
       slotId: `stub-${bookSlotDate}-0`,
       patientId: 'patient-1',
     })
     assert(bookRes.status === 201, `book status ${bookRes.status}`)
-    const book = (await bookRes.json()) as { appointment: { resourceType?: string }; start: string; end: string }
-    assert(book.appointment?.resourceType === 'Appointment' && book.start && book.end, 'book response')
+    const book = (await bookRes.json()) as { appointment: { resourceType?: string; id?: string }; start: string; end: string }
+    assert(book.appointment?.resourceType === 'Appointment' && !!book.start && !!book.end, 'book response')
+    bookedAppointmentId = book.appointment?.id ?? null
     ok('POST /api/appointments (book with Aidbox patient-1)')
   } catch (e) {
     fail('POST /api/appointments book', e)
@@ -226,6 +231,16 @@ async function run(): Promise<void> {
     ok('POST /api/appointments (same slot again → 409 slot_unavailable)')
   } catch (e) {
     fail('POST /api/appointments book 409', e)
+  }
+
+  // Cleanup: cancel the test appointment if it was successfully created
+  if (bookedAppointmentId) {
+    try {
+      await post(`/api/appointments/cancel/${bookedAppointmentId}`, {})
+      console.log(`  [cleanup] Cancelled test appointment ${bookedAppointmentId}`)
+    } catch {
+      console.log(`  [cleanup] Failed to cancel test appointment ${bookedAppointmentId}`)
+    }
   }
 
   try {
