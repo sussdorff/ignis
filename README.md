@@ -177,11 +177,63 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 | **OpenAPI spec** | `GET /api/openapi.json` — load this URL in ElevenLabs tools so the agent uses the correct request/response shapes. The spec’s `servers[0].url` is set from `API_BASE_URL` (default `http://localhost:3000/api`). |
 | **CORS** | Enabled for `/api/*`; cross-origin requests from the voice app are allowed. |
 
-**Endpoints (per OpenAPI):**
+## API Route Overview
 
-- **Patients:** `GET /api/patients/lookup` (phone, birthDate), `POST /api/patients` (create/update) — backed by Aidbox FHIR.
-- **Appointments:** `GET /api/appointments/slots` (date, practitionerId?, limit?), `POST /api/appointments` (slotId, patientId) — **stub** implementations return fixed/mock slots and confirm booking without persisting to FHIR (for voice testing). Real FHIR Slot/Appointment wiring can follow.
-- **Queue:** `POST /api/queue/urgent` (patientId), `POST /api/queue/emergency` (optional body) — **stub** implementations return 201 with generated IDs; no persistence yet.
+### Core Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check (returns `{ status: 'ok', timestamp }`) |
+| `GET` | `/api` | API info (version) |
+| `GET` | `/api/openapi.json` | OpenAPI spec for ElevenLabs tools integration |
+
+### Patients (`/api/patients`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `GET` | `/api/patients` | List all patients | ✅ Aidbox |
+| `GET` | `/api/patients/lookup` | Find patient by `name`, `phone`, and/or `birthDate` | ✅ Aidbox |
+| `POST` | `/api/patients` | Create new patient or update existing | ✅ Aidbox |
+
+### Appointments (`/api/appointments`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `GET` | `/api/appointments/slots` | Get available slots (`date`, `urgency?`, `limit?`) | 🔶 Stub |
+| `POST` | `/api/appointments` | Book appointment (`slotId`, `patientId`) | ✅ Aidbox |
+| `POST` | `/api/appointments/cancel/:appointmentId` | Cancel an appointment | ✅ Aidbox |
+
+### Queue (`/api/queue`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `POST` | `/api/queue/urgent` | Add patient to urgent queue | ✅ Aidbox Task |
+| `POST` | `/api/queue/emergency` | Register emergency transfer | ✅ Aidbox Task |
+
+### Callback (`/api/callback`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `POST` | `/api/callback` | Request callback (`phone`, `reason`, `category?`) | ✅ Aidbox Task |
+
+### Questionnaires (`/api/questionnaires`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `GET` | `/api/questionnaires` | List/search questionnaires (`name?`, `status?`, `title?`) | ✅ Aidbox |
+| `GET` | `/api/questionnaires/patient-intake` | Get the patient intake questionnaire | ✅ Aidbox |
+| `GET` | `/api/questionnaires/:id` | Get questionnaire by ID | ✅ Aidbox |
+
+### Twilio Integration (`/api/twilio`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/twilio/voice` | Inbound call webhook (returns TwiML) |
+| `POST` | `/api/twilio/status` | Call status change webhook |
+| `GET` | `/api/twilio/conversations` | Debug: list active conversations |
+| `WS` | `/api/twilio/stream` | WebSocket for Twilio Media Streams |
+
+**Status Legend:** ✅ Backed by Aidbox FHIR | 🔶 Stub (mock data)
 
 Use the same base URL for all requests (e.g. `http://localhost:3000/api/patients/lookup?birthDate=1985-03-15`).
 
