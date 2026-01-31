@@ -7,7 +7,8 @@ import {
   type PatientLookupResponse,
   type PatientCreateOrUpdateResponse,
 } from '../lib/schemas'
-import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients } from '../lib/aidbox-patients'
+import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients, getUpcomingAppointment } from '../lib/aidbox-patients'
+import type { FHIRPatient } from '../lib/schemas'
 
 const patients = new Hono()
 
@@ -19,24 +20,41 @@ patients.get('/', async (c) => {
   return c.json(allPatients, 200)
 })
 
+/** Build display name for greeting (e.g. "Herr Müller" / "Frau Weber"). */
+function patientDisplayName(patient: FHIRPatient): string {
+  const name = patient.name?.[0]
+  if (!name) return ''
+  const family = name.family ?? ''
+  const given = (name.given ?? []).join(' ')
+  if (patient.gender === 'male') return family ? `Herr ${family}` : given
+  if (patient.gender === 'female') return family ? `Frau ${family}` : given
+  const full = [given, family].filter(Boolean).join(' ').trim()
+  return full || family
+}
+
 // =============================================================================
 // GET /api/patients/lookup - patient_lookup
-// Find a returning patient by phone and/or date of birth (Geburtsdatum).
+// Find a returning patient by name, phone and/or date of birth.
 // =============================================================================
 patients.get('/lookup', async (c) => {
   const parsed = PatientLookupQuerySchema.safeParse(c.req.query())
   if (!parsed.success) {
     const issues = parsed.error.issues
-    const message = issues.map((e) => e.message).join('; ') || 'At least one of phone or birthDate must be provided'
+    const message = issues.map((e) => e.message).join('; ') || 'At least one of name, phone or birthDate must be provided'
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { phone, birthDate } = parsed.data
-  const patient = await findPatient(phone, birthDate)
+  const { name, phone, birthDate } = parsed.data
+  const patient = await findPatient(name, phone, birthDate)
 
   const response: PatientLookupResponse = {
     patient,
     found: patient !== null,
+  }
+  if (patient) {
+    response.patientId = patient.id
+    response.patientName = patientDisplayName(patient)
+    response.upcomingAppointment = await getUpcomingAppointment(patient.id)
   }
 
   return c.json(response, 200)
@@ -50,15 +68,10 @@ patients.post(
   '/',
   zValidator('json', PatientCreateOrUpdateRequestSchema, (result, c) => {
     if (!result.success) {
-      const fields = result.error.errors.map((e) => e.path.join('.'))
-      return c.json(
-        {
-          error: 'validation_failed',
-          message: result.error.errors.map((e) => e.message).join('; '),
-          fields,
-        },
-        400
-      )
+      const issues = result.error.issues
+      const fields = issues.map((e) => (e.path ?? []).join('.'))
+      const message = issues.map((e) => e.message).join('; ')
+      return c.json({ error: 'validation_failed', message, fields }, 400)
     }
   }),
   async (c) => {
