@@ -5,7 +5,7 @@ set -e
 # Usage: ./provision.sh
 
 SERVER_NAME="ignis-hackathon"
-SERVER_TYPE="cx42"  # 16 vCPU, 32GB RAM - for multiple users + services
+SERVER_TYPE="cx53"  # 16 vCPU, 32GB RAM - for multiple users + services
 IMAGE="ubuntu-24.04"
 DATACENTER="fsn1-dc14"  # Frankfurt
 SSH_KEY_NAME="Malte"  # Hetzner SSH key
