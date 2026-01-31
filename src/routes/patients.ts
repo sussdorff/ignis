@@ -7,7 +7,7 @@ import {
   type PatientLookupResponse,
   type PatientCreateOrUpdateResponse,
 } from '../lib/schemas'
-import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients } from '../lib/dummy-data'
+import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients } from '../lib/aidbox-patients'
 
 const patients = new Hono()
 
@@ -37,11 +37,10 @@ patients.get(
       )
     }
   }),
-  (c) => {
+  async (c) => {
     const { phone, birthDate } = c.req.valid('query')
 
-    // TODO: Replace with Aidbox FHIR search
-    const patient = findPatient(phone, birthDate)
+    const patient = await findPatient(phone, birthDate)
 
     const response: PatientLookupResponse = {
       patient,
@@ -71,23 +70,28 @@ patients.post(
       )
     }
   }),
-  (c) => {
+  async (c) => {
     const data = c.req.valid('json')
 
     // If updating, check that patient exists
     if (data.id) {
-      const existing = getPatientById(data.id)
+      const existing = await getPatientById(data.id)
       if (!existing) {
         return c.json({ error: 'not_found' }, 404)
       }
     }
 
-    // TODO: Replace with Aidbox FHIR create/update
-    const { patient, created } = createOrUpdatePatient(data)
-
-    const response: PatientCreateOrUpdateResponse = { patient, created }
-
-    return c.json(response, created ? 201 : 200)
+    try {
+      const { patient, created } = await createOrUpdatePatient(data)
+      const response: PatientCreateOrUpdateResponse = { patient, created }
+      return c.json(response, created ? 201 : 200)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('not found') || message.includes('404')) {
+        return c.json({ error: 'not_found' }, 404)
+      }
+      throw err
+    }
   }
 )
 

@@ -1,0 +1,65 @@
+import { aidboxConfig } from './config'
+
+const { fhirBaseUrl, user, password } = aidboxConfig
+
+/** Basic auth header value (base64 of "user:password") */
+function getAuthHeader(): string {
+  const credentials = `${user}:${password}`
+  const encoded = typeof Buffer !== 'undefined'
+    ? Buffer.from(credentials, 'utf-8').toString('base64')
+    : btoa(credentials)
+  return `Basic ${encoded}`
+}
+
+const defaultHeaders: Record<string, string> = {
+  Accept: 'application/fhir+json',
+  'Content-Type': 'application/fhir+json',
+  Authorization: getAuthHeader(),
+}
+
+/**
+ * Low-level FHIR HTTP client for Aidbox (R4 4.0.1).
+ * All methods throw on non-2xx responses.
+ */
+export const fhirClient = {
+  /** GET [base]/[resourceType] or [base]/[resourceType]/[id] */
+  async get<T>(path: string): Promise<T> {
+    const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
+    const res = await fetch(url, { method: 'GET', headers: defaultHeaders })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`FHIR GET ${path} failed: ${res.status} ${res.statusText} - ${body}`)
+    }
+    return res.json() as Promise<T>
+  },
+
+  /** POST [base]/[resourceType] (create) */
+  async post<T>(path: string, body: unknown): Promise<T> {
+    const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: defaultHeaders,
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`FHIR POST ${path} failed: ${res.status} ${res.statusText} - ${text}`)
+    }
+    return res.json() as Promise<T>
+  },
+
+  /** PUT [base]/[resourceType]/[id] (update) */
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: defaultHeaders,
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`FHIR PUT ${path} failed: ${res.status} ${res.statusText} - ${text}`)
+    }
+    return res.json() as Promise<T>
+  },
+}
