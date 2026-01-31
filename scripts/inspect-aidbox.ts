@@ -24,16 +24,37 @@ async function main(): Promise<void> {
   console.log('')
 
   const resourceTypes = [
+    // Core patient/provider resources
     'Patient',
     'Practitioner',
+    'PractitionerRole',
+    'Organization',
+    'Location',
+    // Scheduling
     'Appointment',
     'Schedule',
     'Slot',
-    'Organization',
-    'Location',
+    // Clinical
     'Encounter',
     'Condition',
     'Observation',
+    'Procedure',
+    'DiagnosticReport',
+    'AllergyIntolerance',
+    'MedicationRequest',
+    'MedicationStatement',
+    // Intake/Forms
+    'Questionnaire',
+    'QuestionnaireResponse',
+    'Consent',
+    'Coverage',
+    'DocumentReference',
+    // Workflow
+    'Task',
+    'Communication',
+    'CommunicationRequest',
+    'ServiceRequest',
+    'HealthcareService',
   ]
 
   for (const resourceType of resourceTypes) {
