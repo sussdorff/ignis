@@ -1,8 +1,5 @@
-"use client"
-
-import React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { AlertTriangle, Play, User, CheckCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -116,7 +113,7 @@ const statusConfig = {
 }
 
 export function DashboardWaitingQueue() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [patients, setPatients] = useState<WaitingPatient[]>(initialPatients)
 
   const sortedPatients = [...patients].sort((a, b) => {
@@ -131,7 +128,7 @@ export function DashboardWaitingQueue() {
   const urgentCount = patients.filter((p) => p.priority === "notfall" || p.priority === "dringend").length
 
   const handlePatientClick = (patientId: string) => {
-    router.push(`/patient/${patientId}`)
+    navigate(`/patient/${patientId}`)
   }
 
   const progressStatus = (patient: WaitingPatient) => {

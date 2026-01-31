@@ -1,8 +1,5 @@
-"use client"
-
-import React from "react"
 import { useState, useEffect } from "react"
-import { Calendar, Clock, User, X } from "lucide-react"
+import { Calendar, Clock, User } from "lucide-react"
 import {
   Dialog,
   DialogContent,

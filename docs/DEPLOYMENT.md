@@ -8,12 +8,11 @@ Internet
 Nginx (Docker, port 80/443)
    ├─→ / → Ignis App (systemd, port 3000)
    ├─→ /aidbox/ → Aidbox (Docker, port 8080)
-   ├─→ /fhir/ → Aidbox FHIR API
-   └─→ /n8n/ → n8n (Docker, port 5678)
+   └─→ /fhir/ → Aidbox FHIR API
 ```
 
 **Why this hybrid approach?**
-- **Docker**: Infrastructure services (Aidbox, n8n, nginx) - complex dependencies
+- **Docker**: Infrastructure services (Aidbox, nginx) - complex dependencies
 - **Systemd**: Our app (Bun backend + React frontend) - simple, fast iteration
 
 ## Initial Deployment (Fresh Server)
@@ -35,7 +34,7 @@ Nginx (Docker, port 80/443)
 6. Builds frontend for production (`bun run build`)
 7. Creates systemd service (`/etc/systemd/system/ignis-app.service`)
 8. Starts the app service
-9. Starts Docker services (Aidbox, n8n, nginx)
+9. Starts Docker services (Aidbox, nginx)
 
 ## Updating After Code Changes
 

@@ -109,9 +109,9 @@ flowchart TB
 - ✅ Tailwind CSS v4 integration
 - ✅ shadcn/ui components (button, card, input, form, calendar, label)
 - ✅ Path aliases configured (@/* → src/*)
-- ✅ Docker-based deployment (app, Aidbox, n8n, nginx)
+- ✅ Docker-based deployment (app, Aidbox, nginx)
 - ✅ Automated deployment scripts (setup-remote.sh, update-server.sh)
-- ✅ Nginx reverse proxy routing (/app, /api, /fhir, /n8n)
+- ✅ Nginx reverse proxy routing (/app, /api, /fhir)
 - ✅ FHIR client and Aidbox integration (config, fhir-client, aidbox-patients, aidbox-appointments)
 - ✅ Real API for patients (lookup by phone/DOB/name, create/update) backed by Aidbox
 - ✅ Patient lookup with returning patient pre-fill (patientId, patientName, upcomingAppointment)
@@ -212,7 +212,6 @@ This will:
 **Verify**
 
 - Aidbox UI: http://localhost:8080 (admin/ignis2026)
-- n8n Workflows: http://localhost:5678 (admin/ignis2026)
 
 ## Deployment
 
@@ -229,7 +228,7 @@ This will:
 This will:
 - Clone the repo to `/opt/ignis`
 - Build Docker image for the app (Bun backend + React frontend)
-- Start all Docker services (app, Aidbox, n8n, nginx)
+- Start all Docker services (app, Aidbox, nginx)
 - Configure nginx reverse proxy
 
 ### Updating Existing Server
@@ -311,7 +310,6 @@ ssh hackathon@167.235.236.238
 | **Ignis API** | http://server-ip/api/ | - |
 | **Aidbox UI** | http://server-ip/ | admin / ignis2026 |
 | **FHIR API** | http://server-ip/fhir/ | admin / ignis2026 |
-| **n8n** | http://server-ip/n8n/ | admin / ignis2026 |
 
 All services run in Docker and are proxied through nginx.
 

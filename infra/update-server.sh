@@ -1,15 +1,14 @@
 #!/bin/bash
 # Quick update script - run this after pushing code changes
-# Usage: ./update-server.sh [server-ip]
+# Usage: ./update-server.sh [ssh-host]
 
 set -e
 
-SERVER_IP="${1:-167.235.236.238}"
-USER="hackathon"
+SSH_HOST="${1:-hackathon}"
 
-echo "Updating Ignis on $SERVER_IP..."
+echo "Updating Ignis on $SSH_HOST..."
 
-ssh "$USER@$SERVER_IP" bash << 'REMOTE_SCRIPT'
+ssh "$SSH_HOST" bash << 'REMOTE_SCRIPT'
 set -e
 
 cd /opt/ignis
