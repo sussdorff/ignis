@@ -202,14 +202,25 @@ export function useAppointments(): UseAppointmentsResult {
         const [moved] = fromAppointments.splice(index, 1)
         const updatedAppointment = { ...moved, time: newTime }
 
-        const toAppointments = [...(prev[toDateKey] || [])]
-        toAppointments.push(updatedAppointment)
-        toAppointments.sort((a, b) => a.time.localeCompare(b.time))
-
-        return {
-          ...prev,
-          [fromDateKey]: fromAppointments,
-          [toDateKey]: toAppointments,
+        // Handle same-day moves vs cross-day moves
+        if (fromDateKey === toDateKey) {
+          // Same day: just update the time in the already-spliced array
+          fromAppointments.push(updatedAppointment)
+          fromAppointments.sort((a, b) => a.time.localeCompare(b.time))
+          return {
+            ...prev,
+            [fromDateKey]: fromAppointments,
+          }
+        } else {
+          // Different day: add to destination
+          const toAppointments = [...(prev[toDateKey] || [])]
+          toAppointments.push(updatedAppointment)
+          toAppointments.sort((a, b) => a.time.localeCompare(b.time))
+          return {
+            ...prev,
+            [fromDateKey]: fromAppointments,
+            [toDateKey]: toAppointments,
+          }
         }
       })
 
