@@ -34,11 +34,13 @@ RUN groupadd --system --gid 1001 nodejs && \
 # Copy built standalone app
 # Next.js standalone output includes the full path structure, find and copy the server.js location
 COPY --from=builder /app/.next/standalone ./standalone-tmp
-COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Flatten the standalone directory structure to find server.js
+# Flatten the standalone directory structure to find server.js, then add static assets
 RUN find ./standalone-tmp -name "server.js" -type f | head -1 | xargs -I{} dirname {} | xargs -I{} sh -c 'cp -r {}/* . && rm -rf ./standalone-tmp'
+
+# Copy static assets into the standalone .next directory
+COPY --from=builder /app/.next/static ./.next/static
 
 # Set ownership
 RUN chown -R nextjs:nodejs /app
