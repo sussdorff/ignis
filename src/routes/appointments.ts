@@ -9,6 +9,7 @@ import {
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
 import { cancelAppointment, getTodayAppointments, updateAppointmentStatus } from '../lib/aidbox-appointments'
+import { fhirClient } from '../lib/fhir-client'
 
 const appointments = new Hono()
 
@@ -75,6 +76,27 @@ function getMinSlotTime(): Date {
   return now
 }
 
+/** Get booked appointment times for a given date. */
+async function getBookedTimes(date: string): Promise<Set<string>> {
+  try {
+    const bundle = await fhirClient.get(`Appointment?date=${date}&status=booked&_count=100`) as {
+      entry?: Array<{ resource?: { start?: string } }>
+    }
+    const bookedTimes = new Set<string>()
+    for (const entry of bundle.entry || []) {
+      const start = entry.resource?.start
+      if (start) {
+        // Normalize to just hour:minute for comparison
+        const time = start.slice(11, 16) // Extract HH:MM
+        bookedTimes.add(time)
+      }
+    }
+    return bookedTimes
+  } catch {
+    return new Set()
+  }
+}
+
 // =============================================================================
 // GET /api/appointments/slots - get_available_slots
 // =============================================================================
@@ -90,15 +112,31 @@ appointments.get('/slots', async (c) => {
     return c.json({ slots: [] }, 200)
   }
   
-  // Generate slots and filter out past times (must be at least 30 min from now)
-  const allSlots = generateStubSlots(date, limit * 2) // Generate extra to account for filtering
+  // Generate slots and filter
+  const allSlots = generateStubSlots(date, limit * 3) // Generate extra to account for filtering
   const minTime = getMinSlotTime()
   const today = todayBerlin()
   
-  // Only filter by time if the requested date is today
-  const filteredSlots = date === today
-    ? allSlots.filter(slot => new Date(slot.start) >= minTime)
-    : allSlots
+  // Get already booked times for this date
+  const bookedTimes = await getBookedTimes(date)
+  
+  // Filter out:
+  // 1. Past times (if today) - must be at least 30 min from now
+  // 2. Already booked times
+  const filteredSlots = allSlots.filter(slot => {
+    // Check if slot is in the past (only for today)
+    if (date === today && new Date(slot.start) < minTime) {
+      return false
+    }
+    
+    // Check if slot is already booked
+    const slotTime = slot.start.slice(11, 16) // Extract HH:MM
+    if (bookedTimes.has(slotTime)) {
+      return false
+    }
+    
+    return true
+  })
   
   // Limit to requested amount
   const slots = filteredSlots.slice(0, limit)
