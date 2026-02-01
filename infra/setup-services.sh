@@ -68,6 +68,15 @@ if [[ -z "$AIDBOX_LICENSE_KEY" ]]; then
     error "AIDBOX_LICENSE_KEY not set in .env. Get a free dev license at https://aidbox.app"
 fi
 
+# Generate JWT_SECRET if not set (required for production auth)
+if [[ -z "$JWT_SECRET" ]]; then
+    log "JWT_SECRET not set - generating secure secret..."
+    JWT_SECRET=$(openssl rand -base64 32)
+    echo "JWT_SECRET=$JWT_SECRET" >> .env
+    export JWT_SECRET
+    log "JWT_SECRET generated and added to .env"
+fi
+
 # Check for SSL configuration
 SSL_ENABLED=false
 if [[ -n "$DOMAIN" && -f "$PROJECT_DIR/infra/ssl/fullchain.pem" && -f "$PROJECT_DIR/infra/nginx/nginx-ssl.conf" ]]; then
