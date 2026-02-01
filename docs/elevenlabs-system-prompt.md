@@ -175,6 +175,8 @@ Step 3 - Then arrange callback:
 2. Use `get_available_slots` with `urgency=routine`
 3. Offer 2-3 time options
 4. Use `book_appointment`
+5. Use `get_intake_questions` to get follow-up questions
+6. Ask patient the intake questions and note their answers
 
 ---
 
@@ -250,6 +252,24 @@ If `patient_lookup` returns `found=false`:
 - **Categories:** prescription, billing, test_results, insurance, technical_issue, general
 - **When:** Out-of-scope requests or tool failures
 - **Rule:** Use patient_lookup FIRST if patient gave name/DOB
+
+### `get_intake_questions`
+- **Method:** GET /appointments/intake-questions
+- **Parameters:** reason (string), type (routine/urgent/followup), patientId (optional)
+- **When:** AFTER successfully booking an appointment
+- **Response:** List of questions to ask the patient
+- **Flow:**
+  1. Call with the appointment reason and type
+  2. For each question in the response, ask the patient
+  3. Use the appropriate language (question for German, question_en for English)
+  4. Note their answers for the medical record
+
+**Example conversation after booking:**
+- Agent: "Bevor wir abschließen, habe ich noch ein paar kurze Fragen für den Arzt."
+- Agent: [Ask first question from get_intake_questions response]
+- Patient: [Answers]
+- Agent: [Ask next question]
+- Continue until all required questions are answered
 
 ---
 
