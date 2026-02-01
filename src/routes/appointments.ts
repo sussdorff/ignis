@@ -8,15 +8,53 @@ import {
   type CancelAppointmentResponse,
 } from '../lib/schemas'
 import { getPatientById } from '../lib/aidbox-patients'
-import {
-  cancelAppointment,
-  createAppointment,
-  getAvailableSlots,
-  getSlotWithPractitioner,
-  updateSlotStatus,
-} from '../lib/aidbox-appointments'
+import { cancelAppointment, getTodayAppointments, updateAppointmentStatus } from '../lib/aidbox-appointments'
 
 const appointments = new Hono()
+
+const STUB_PRACTITIONER_ID = 'practitioner-1'
+const STUB_PRACTITIONER_DISPLAY = 'Dr. Anna Schmidt'
+const SLOT_DURATION_MINUTES = 30
+const STUB_START_HOUR = 9
+const STUB_START_MINUTE = 0
+const STUB_END_HOUR = 11
+const STUB_END_MINUTE = 30
+
+/** Generate stub slots for a given date (Europe/Berlin). */
+function generateStubSlots(date: string, limit: number): Slot[] {
+  const slots: Slot[] = []
+  let hour = STUB_START_HOUR
+  let minute = STUB_START_MINUTE
+  for (let i = 0; i < limit; i++) {
+    const start = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
+    minute += SLOT_DURATION_MINUTES
+    if (minute >= 60) {
+      minute = 0
+      hour += 1
+    }
+    if (hour > STUB_END_HOUR || (hour === STUB_END_HOUR && minute > STUB_END_MINUTE)) break
+    const end = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
+    slots.push({
+      slotId: `stub-${date}-${i}`,
+      start,
+      end,
+      practitionerId: STUB_PRACTITIONER_ID,
+      practitionerDisplay: STUB_PRACTITIONER_DISPLAY,
+    })
+  }
+  return slots
+}
+
+/** Derive start/end from stub slotId (stub-YYYY-MM-DD-index). */
+function stubSlotTimes(slotId: string): { start: string; end: string } | null {
+  const match = /^stub-(\d{4}-\d{2}-\d{2})-(\d+)$/.exec(slotId)
+  if (!match) return null
+  const [, date, indexStr] = match
+  const index = parseInt(indexStr, 10)
+  const slots = generateStubSlots(date, index + 1)
+  const slot = slots[index]
+  return slot ? { start: slot.start, end: slot.end } : null
+}
 
 /** Today's date in Europe/Berlin (YYYY-MM-DD). */
 function todayBerlin(): string {
@@ -33,40 +71,13 @@ appointments.get('/slots', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { date, urgency, practitionerId, limit } = parsed.data
-
-  // For urgent requests, only return slots for today
+  const { date, urgency, limit } = parsed.data
   if (urgency === 'urgent' && date !== todayBerlin()) {
     return c.json({ slots: [] }, 200)
   }
-
-  try {
-    // Query real slots from Aidbox
-    const availableSlots = await getAvailableSlots({
-      date,
-      practitionerId,
-      limit,
-    })
-
-    // Map to API response format
-    const slots: Slot[] = availableSlots.map((s) => ({
-      slotId: s.slotId,
-      start: s.start,
-      end: s.end,
-      practitionerId: s.practitionerId,
-      practitionerDisplay: s.practitionerDisplay,
-    }))
-
-    const response: SlotsResponse = { slots }
-    return c.json(response, 200)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[appointments/slots] Error fetching slots:', message)
-    return c.json(
-      { error: 'internal', message: 'Failed to fetch available slots' },
-      502
-    )
-  }
+  const slots = generateStubSlots(date, limit)
+  const response: SlotsResponse = { slots }
+  return c.json(response, 200)
 })
 
 // =============================================================================
@@ -86,11 +97,10 @@ appointments.post('/', async (c) => {
     return c.json({ error: 'validation_failed', message }, 400)
   }
 
-  const { slotId, patientId, practitionerId, type, reason } = parsed.data
+  const { slotId, patientId } = parsed.data
 
-  // Get real slot data from Aidbox
-  const slotInfo = await getSlotWithPractitioner(slotId)
-  if (!slotInfo) {
+  const times = stubSlotTimes(slotId)
+  if (!times) {
     return c.json(
       { error: 'not_found', resource: 'slot', slotId },
       404
@@ -105,48 +115,21 @@ appointments.post('/', async (c) => {
     )
   }
 
-  // Use practitioner from slot, or override if provided in request
-  const pracId = practitionerId ?? slotInfo.practitionerId ?? 'unknown'
-  const pracDisplay = slotInfo.practitionerDisplay
-
-  const result = await createAppointment({
-    start: slotInfo.start,
-    end: slotInfo.end,
-    patientId,
-    practitionerId: pracId,
-    practitionerDisplay: pracDisplay,
-    type: type ?? 'routine',
-    reason,
-    slotId,
-  })
-
-  if (result.ok === false && result.code === 'slot_unavailable') {
-    return c.json({ error: 'slot_unavailable' }, 409)
-  }
-
-  // Mark the slot as busy after successful booking
-  try {
-    await updateSlotStatus(slotId, 'busy')
-  } catch (err) {
-    console.error('[appointments/book] Failed to update slot status:', err)
-    // Continue anyway - appointment is booked, slot status is non-critical
-  }
-
-  const appt = result.appointment
   const response: BookAppointmentResponse = {
     appointment: {
-      resourceType: appt.resourceType,
-      id: appt.id,
-      status: appt.status,
-      start: appt.start,
-      end: appt.end,
-      participant: appt.participant,
-      description: appt.description,
-      appointmentType: appt.appointmentType,
+      resourceType: 'Appointment',
+      id: `stub-${Date.now()}`,
+      status: 'booked',
+      start: times.start,
+      end: times.end,
+      participant: [
+        { actor: { reference: `Patient/${patientId}` }, status: 'accepted' },
+        { actor: { reference: `Practitioner/${STUB_PRACTITIONER_ID}` }, status: 'accepted' },
+      ],
     },
-    start: slotInfo.start,
-    end: slotInfo.end,
-    confirmationMessage: `Ihr Termin wurde für ${slotInfo.start} bestätigt.`,
+    start: times.start,
+    end: times.end,
+    confirmationMessage: `Ihre Termin wurde für ${times.start} bestätigt.`,
   }
   return c.json(response, 201)
 })
@@ -175,6 +158,47 @@ appointments.post('/cancel/:appointmentId', async (c) => {
     message: 'Der Termin wurde storniert.',
   }
   return c.json(response, 200)
+})
+
+// =============================================================================
+// GET /api/appointments/today - get today's appointments
+// =============================================================================
+appointments.get('/today', async (c) => {
+  const todayAppointments = await getTodayAppointments()
+  return c.json({ appointments: todayAppointments }, 200)
+})
+
+// =============================================================================
+// PATCH /api/appointments/:appointmentId/status - update appointment status
+// =============================================================================
+appointments.patch('/:appointmentId/status', async (c) => {
+  const appointmentId = c.req.param('appointmentId')
+  
+  let body: { status?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'validation_failed', message: 'Invalid JSON' }, 400)
+  }
+  
+  const validStatuses = ['booked', 'arrived', 'fulfilled', 'cancelled', 'noshow']
+  if (!body.status || !validStatuses.includes(body.status)) {
+    return c.json({
+      error: 'validation_failed',
+      message: `status must be one of: ${validStatuses.join(', ')}`
+    }, 400)
+  }
+  
+  const result = await updateAppointmentStatus(
+    appointmentId,
+    body.status as 'booked' | 'arrived' | 'fulfilled' | 'cancelled' | 'noshow'
+  )
+  
+  if (!result.ok) {
+    return c.json({ error: result.error ?? 'not_found' }, 404)
+  }
+  
+  return c.json({ ok: true, appointmentId, status: body.status }, 200)
 })
 
 export default appointments

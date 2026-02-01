@@ -107,4 +107,65 @@ patients.post(
   }
 )
 
+// =============================================================================
+// GET /api/patients/:id/encounters - stub for visit history
+// Returns empty array (placeholder for future FHIR Encounter integration)
+// =============================================================================
+patients.get('/:id/encounters', async (c) => {
+  const id = c.req.param('id')
+  const patient = await getPatientById(id)
+  if (!patient) {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  // Stub: return empty encounters array
+  return c.json({ encounters: [] }, 200)
+})
+
+// =============================================================================
+// GET /api/patients/:id/conditions - stub for medical history
+// Returns empty conditions, medications, immunizations, conditions
+// =============================================================================
+patients.get('/:id/conditions', async (c) => {
+  const id = c.req.param('id')
+  const patient = await getPatientById(id)
+  if (!patient) {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  // Stub: return empty medical history
+  return c.json({
+    conditions: [],
+    medications: [],
+    immunizations: [],
+    pastConditions: [],
+  }, 200)
+})
+
+// =============================================================================
+// GET /api/patients/:id/documents - stub for patient documents
+// Returns empty documents array
+// =============================================================================
+patients.get('/:id/documents', async (c) => {
+  const id = c.req.param('id')
+  const patient = await getPatientById(id)
+  if (!patient) {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  // Stub: return empty documents array
+  return c.json({ documents: [] }, 200)
+})
+
+// =============================================================================
+// GET /api/patients/:id/notes - stub for patient notes
+// Returns empty notes array
+// =============================================================================
+patients.get('/:id/notes', async (c) => {
+  const id = c.req.param('id')
+  const patient = await getPatientById(id)
+  if (!patient) {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  // Stub: return empty notes array
+  return c.json({ notes: [] }, 200)
+})
+
 export default patients
