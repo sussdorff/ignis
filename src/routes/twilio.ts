@@ -34,9 +34,10 @@ twilio.post('/voice', async (c: Context) => {
     console.log(`[Twilio] Incoming call: ${callSid} from ${from} to ${to}`)
 
     // Get WebSocket URL for this server
-    const protocol = c.req.header('x-forwarded-proto') || 'wss'
+    const httpProto = c.req.header('x-forwarded-proto') || 'https'
+    const wsProto = httpProto === 'https' ? 'wss' : 'ws'
     const host = c.req.header('host') || 'localhost:3000'
-    const streamUrl = `${protocol}://${host}/api/twilio/stream`
+    const streamUrl = `${wsProto}://${host}/api/twilio/stream`
 
     console.log(`[Twilio] Returning TwiML with stream URL: ${streamUrl}`)
 
