@@ -459,5 +459,16 @@
   },
   "languageSelector": {
     "label": "Language"
+  },
+  "chat": {
+    "title": "AI Health Assistant",
+    "subtitle": "Describe your symptoms and concerns",
+    "conversationTitle": "Chat with our AI Assistant",
+    "messageList": "Chat messages",
+    "emptyState": "Start a conversation by describing your symptoms or health concerns.",
+    "inputPlaceholder": "Type your message...",
+    "inputLabel": "Message input",
+    "sendButton": "Send message",
+    "send": "Send"
   }
 }

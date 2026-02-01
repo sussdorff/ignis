@@ -459,5 +459,16 @@
   },
   "languageSelector": {
     "label": "भाषा"
+  },
+  "chat": {
+    "title": "AI स्वास्थ्य सहायक",
+    "subtitle": "अपने लक्षण और चिंताएं बताएं",
+    "conversationTitle": "हमारे AI सहायक से बात करें",
+    "messageList": "चैट संदेश",
+    "emptyState": "अपने लक्षण या स्वास्थ्य संबंधी चिंताओं का वर्णन करके बातचीत शुरू करें।",
+    "inputPlaceholder": "अपना संदेश लिखें...",
+    "inputLabel": "संदेश इनपुट",
+    "sendButton": "संदेश भेजें",
+    "send": "भेजें"
   }
 }

@@ -459,5 +459,16 @@
   },
   "languageSelector": {
     "label": "Sprache"
+  },
+  "chat": {
+    "title": "KI-Gesundheitsassistent",
+    "subtitle": "Beschreiben Sie Ihre Symptome und Anliegen",
+    "conversationTitle": "Chat mit unserem KI-Assistenten",
+    "messageList": "Chat-Nachrichten",
+    "emptyState": "Starten Sie eine Unterhaltung, indem Sie Ihre Symptome oder Gesundheitsfragen beschreiben.",
+    "inputPlaceholder": "Nachricht eingeben...",
+    "inputLabel": "Nachrichteneingabe",
+    "sendButton": "Nachricht senden",
+    "send": "Senden"
   }
 }

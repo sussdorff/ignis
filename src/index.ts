@@ -10,6 +10,7 @@ import twilio from './routes/twilio'
 import questionnaires from './routes/questionnaires'
 import auth from './routes/auth'
 import voice from './routes/voice'
+import chat from './routes/chat'
 import authTest from './routes/auth-test'
 import { requireVoiceApiKey } from './middleware/voice-api-key'
 import { serveStatic } from 'hono/bun'
@@ -65,6 +66,9 @@ app.route('/api/auth', auth)
 app.use('/api/voice/*', requireVoiceApiKey)
 app.route('/api/voice', voice)
 
+// Chat routes (ElevenLabs text-based chat sessions)
+app.route('/api/chat', chat)
+
 // Twilio routes (voice webhooks, call status, WebSocket streaming)
 app.route('/api/twilio', twilio)
 
@@ -81,9 +85,10 @@ app.get('*', serveStatic({ path: './frontend/dist/index.html' }))
 
 // Start server with WebSocket support
 const port = Number(process.env.PORT) || 3000
-console.log(`🔥 Ignis server running on http://localhost:${port}`)
-console.log(`📞 Twilio webhooks: /api/twilio/voice, /api/twilio/status`)
-console.log(`🔌 WebSocket endpoint: ws://localhost:${port}/api/twilio/stream`)
+console.log(`Ignis server running on http://localhost:${port}`)
+console.log(`Twilio webhooks: /api/twilio/voice, /api/twilio/status`)
+console.log(`WebSocket endpoint: ws://localhost:${port}/api/twilio/stream`)
+console.log(`Chat API: /api/chat/session, /api/chat/message`)
 
 Bun.serve({
   port,
