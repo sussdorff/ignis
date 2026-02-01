@@ -463,3 +463,58 @@ export async function getEmergencyAlerts(): Promise<Patient[]> {
   const patients = await getPatients()
   return patients.filter(p => p.urgency === 'emergency')
 }
+
+// =============================================================================
+// Doctor dashboard: prescription requests
+// =============================================================================
+
+export interface PrescriptionRequestPatientSummary {
+  id: string
+  name: string
+  birthDate?: string
+}
+
+export interface PrescriptionRequest {
+  id: string
+  status: string
+  intent: string
+  patientId: string | null
+  patient: PrescriptionRequestPatientSummary | null
+  authoredOn: string | undefined
+  medicationText: string | undefined
+  note: string | undefined
+}
+
+export interface PrescriptionRequestsResponse {
+  requests: PrescriptionRequest[]
+}
+
+/**
+ * Fetch pending prescription requests for the doctor dashboard
+ */
+export async function getPrescriptionRequests(): Promise<PrescriptionRequest[]> {
+  const response = await fetch(`${API_BASE}/doctor/prescription-requests`)
+  if (!response.ok) throw new Error('Failed to fetch prescription requests')
+  const data: PrescriptionRequestsResponse = await response.json()
+  return data.requests
+}
+
+/**
+ * Approve or deny a prescription request
+ */
+export async function actionPrescriptionRequest(
+  id: string,
+  action: 'approve' | 'deny',
+  note?: string
+): Promise<{ id: string; action: string; status: string; message: string }> {
+  const response = await fetch(`${API_BASE}/doctor/prescription-requests/${id}/action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, note }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error((err as { message?: string }).message ?? 'Failed to update prescription request')
+  }
+  return response.json()
+}

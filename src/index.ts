@@ -8,6 +8,7 @@ import queue from './routes/queue'
 import callback from './routes/callback'
 import twilio from './routes/twilio'
 import questionnaires from './routes/questionnaires'
+import doctor from './routes/doctor'
 import auth from './routes/auth'
 import voice from './routes/voice'
 import chat from './routes/chat'
@@ -57,6 +58,9 @@ app.route('/api/callback', callback)
 
 // Questionnaire routes (get questionnaires from FHIR store)
 app.route('/api/questionnaires', questionnaires)
+
+// Doctor dashboard (prescription requests)
+app.route('/api/doctor', doctor)
 
 // Authentication routes (magic link, SMS OTP)
 app.route('/api/auth', auth)

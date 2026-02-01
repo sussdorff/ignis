@@ -208,6 +208,14 @@ export const RequestCallbackResponseSchema = z.object({
 export type RequestCallbackRequest = z.infer<typeof RequestCallbackRequestSchema>
 export type RequestCallbackResponse = z.infer<typeof RequestCallbackResponseSchema>
 
+// --- Doctor: prescription requests ---
+export const PrescriptionRequestActionSchema = z.object({
+  action: z.enum(['approve', 'deny']),
+  note: z.string().optional(),
+})
+
+export type PrescriptionRequestAction = z.infer<typeof PrescriptionRequestActionSchema>
+
 // =============================================================================
 // Error response schemas
 // =============================================================================

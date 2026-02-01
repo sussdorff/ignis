@@ -29,15 +29,21 @@ function fetchWithTimeout(
   return fetch(url, { ...fetchInit, signal: controller.signal }).finally(() => clearTimeout(id))
 }
 
+/** Options for FHIR client requests (e.g. shorter timeout for doctor dashboard). */
+export interface FhirClientOptions {
+  timeout?: number
+}
+
 /**
  * Low-level FHIR HTTP client for Aidbox (R4 4.0.1).
- * All methods throw on non-2xx responses. Requests timeout after 20s.
+ * All methods throw on non-2xx responses. Requests timeout after 20s by default.
  */
 export const fhirClient = {
   /** GET [base]/[resourceType] or [base]/[resourceType]/[id] */
-  async get<T>(path: string): Promise<T> {
+  async get<T>(path: string, options?: FhirClientOptions): Promise<T> {
     const url = path.startsWith('http') ? path : `${fhirBaseUrl}/${path.replace(/^\//, '')}`
-    const res = await fetchWithTimeout(url, { method: 'GET', headers: defaultHeaders })
+    const timeout = options?.timeout ?? FHIR_REQUEST_TIMEOUT_MS
+    const res = await fetchWithTimeout(url, { method: 'GET', headers: defaultHeaders, timeout })
     if (!res.ok) {
       const body = await res.text()
       throw new Error(`FHIR GET ${path} failed: ${res.status} ${res.statusText} - ${body}`)

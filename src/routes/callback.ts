@@ -4,6 +4,7 @@ import {
   type RequestCallbackResponse,
 } from '../lib/schemas'
 import { createCallbackRequest } from '../lib/aidbox-tasks'
+import { createPrescriptionRequest } from '../lib/aidbox-medication-requests'
 
 const callback = new Hono()
 
@@ -32,6 +33,21 @@ callback.post('/', async (c) => {
     patientId,
     patientName,
   })
+
+  // When category is prescription and we have a patient, create a MedicationRequest
+  // so the doctor dashboard can list and act on it.
+  if (category === 'prescription' && patientId) {
+    try {
+      await createPrescriptionRequest({
+        patientId,
+        reason,
+        medicationText: reason,
+      })
+    } catch {
+      // Non-fatal: callback task was created; prescription request is optional
+    }
+  }
+
   const response: RequestCallbackResponse = {
     callbackId: task.id ?? '',
     estimatedTime: 'within 2 hours',
