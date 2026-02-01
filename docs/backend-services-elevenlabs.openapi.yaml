@@ -290,6 +290,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/InternalError'
 
+  /appointments/intake-questions:
+    get:
+      operationId: get_intake_questions
+      summary: Get intake questions for appointment
+      description: |
+        Returns follow-up questions to ask the patient after booking an appointment.
+        Questions are tailored based on appointment type and reason.
+        **When the agent uses it:** After successfully booking an appointment,
+        call this to get relevant intake questions to ask the patient.
+        **Example:** After booking a vaccination appointment, ask about allergies.
+      tags:
+        - appointments
+      parameters:
+        - name: reason
+          in: query
+          description: The reason for the appointment (e.g., "Impfung", "Vorsorge", "Rückenschmerzen")
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Appointment type
+          required: false
+          schema:
+            type: string
+            enum:
+              - routine
+              - urgent
+              - followup
+            default: routine
+        - name: patientId
+          in: query
+          description: Patient ID (optional, for personalized questions)
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of intake questions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeQuestionsResponse'
+
   /callback:
     post:
       operationId: request_callback
@@ -708,6 +752,53 @@ components:
         message:
           type: string
           description: Confirmation message for the agent
+
+    # --- Intake questions ---
+    IntakeQuestionsResponse:
+      type: object
+      required:
+        - questions
+        - totalQuestions
+      properties:
+        questions:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - question
+              - type
+            properties:
+              id:
+                type: string
+                description: Unique question identifier
+              question:
+                type: string
+                description: Question text in German
+              question_en:
+                type: string
+                description: Question text in English
+              type:
+                type: string
+                enum:
+                  - text
+                  - number
+                  - boolean
+                description: Expected answer type
+              required:
+                type: boolean
+                description: Whether the question must be answered
+        totalQuestions:
+          type: integer
+          description: Total number of questions
+        patientId:
+          type: string
+          nullable: true
+        appointmentType:
+          type: string
+        reason:
+          type: string
+          nullable: true
 
     # --- Common errors ---
     ValidationError:

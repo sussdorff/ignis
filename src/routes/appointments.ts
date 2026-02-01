@@ -169,6 +169,136 @@ appointments.get('/today', async (c) => {
 })
 
 // =============================================================================
+// GET /api/appointments/intake-questions - get_intake_questions
+// Returns follow-up questions to ask patient after booking, based on reason
+// =============================================================================
+appointments.get('/intake-questions', async (c) => {
+  const { reason, type, patientId } = c.req.query()
+  
+  // Define questions based on appointment reason/type
+  const baseQuestions = [
+    {
+      id: 'symptoms_duration',
+      question: 'Wie lange haben Sie diese Beschwerden schon?',
+      question_en: 'How long have you had these symptoms?',
+      type: 'text',
+      required: true,
+    },
+    {
+      id: 'symptoms_severity',
+      question: 'Auf einer Skala von 1 bis 10, wie stark sind Ihre Beschwerden?',
+      question_en: 'On a scale of 1 to 10, how severe are your symptoms?',
+      type: 'number',
+      required: true,
+    },
+    {
+      id: 'previous_treatment',
+      question: 'Haben Sie bereits etwas dagegen unternommen oder Medikamente eingenommen?',
+      question_en: 'Have you already tried any treatment or taken any medication?',
+      type: 'text',
+      required: false,
+    },
+  ]
+  
+  // Add type-specific questions
+  const typeQuestions: Record<string, typeof baseQuestions> = {
+    routine: [
+      {
+        id: 'last_checkup',
+        question: 'Wann war Ihre letzte Vorsorgeuntersuchung?',
+        question_en: 'When was your last check-up?',
+        type: 'text',
+        required: false,
+      },
+    ],
+    urgent: [
+      {
+        id: 'symptoms_worsening',
+        question: 'Haben sich die Beschwerden in den letzten Stunden verschlechtert?',
+        question_en: 'Have your symptoms worsened in the last few hours?',
+        type: 'boolean',
+        required: true,
+      },
+      {
+        id: 'pain_location',
+        question: 'Wo genau haben Sie Schmerzen?',
+        question_en: 'Where exactly do you have pain?',
+        type: 'text',
+        required: true,
+      },
+    ],
+    followup: [
+      {
+        id: 'treatment_effect',
+        question: 'Hat die bisherige Behandlung geholfen?',
+        question_en: 'Has the previous treatment helped?',
+        type: 'boolean',
+        required: true,
+      },
+      {
+        id: 'new_symptoms',
+        question: 'Sind neue Beschwerden aufgetreten?',
+        question_en: 'Have any new symptoms appeared?',
+        type: 'text',
+        required: false,
+      },
+    ],
+  }
+  
+  // Reason-specific questions
+  const reasonQuestions: Record<string, typeof baseQuestions> = {
+    vaccination: [
+      {
+        id: 'allergies',
+        question: 'Haben Sie Allergien, insbesondere gegen Impfstoffe oder deren Bestandteile?',
+        question_en: 'Do you have any allergies, especially to vaccines or their components?',
+        type: 'boolean',
+        required: true,
+      },
+      {
+        id: 'current_illness',
+        question: 'Fühlen Sie sich heute gesund? Haben Sie Fieber oder eine Erkältung?',
+        question_en: 'Do you feel healthy today? Do you have a fever or cold?',
+        type: 'boolean',
+        required: true,
+      },
+    ],
+    checkup: [
+      {
+        id: 'concerns',
+        question: 'Gibt es bestimmte Themen, die Sie bei der Untersuchung ansprechen möchten?',
+        question_en: 'Are there specific topics you would like to discuss during the examination?',
+        type: 'text',
+        required: false,
+      },
+    ],
+  }
+  
+  // Build response
+  let questions = [...baseQuestions]
+  
+  if (type && typeQuestions[type]) {
+    questions = [...questions, ...typeQuestions[type]]
+  }
+  
+  // Check if reason matches any specific category
+  const reasonLower = (reason || '').toLowerCase()
+  if (reasonLower.includes('impf') || reasonLower.includes('vaccin')) {
+    questions = [...questions, ...reasonQuestions.vaccination]
+  } else if (reasonLower.includes('vorsorge') || reasonLower.includes('check')) {
+    questions = [...questions, ...reasonQuestions.checkup]
+  }
+  
+  return c.json({
+    questions,
+    totalQuestions: questions.length,
+    patientId: patientId || null,
+    appointmentType: type || 'routine',
+    reason: reason || null,
+  }, 200)
+})
+
+// =============================================================================
 // PATCH /api/appointments/:appointmentId/status - update appointment status
 // =============================================================================
 appointments.patch('/:appointmentId/status', async (c) => {

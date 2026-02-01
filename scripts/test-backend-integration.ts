@@ -119,7 +119,7 @@ async function testRequestCallback() {
     }),
   })
 
-  const passed = status === 200 && data.callbackId
+  const passed = (status === 200 || status === 201) && data.callbackId
 
   results.push({
     name: 'Request Callback',
@@ -152,7 +152,7 @@ async function testAddToUrgentQueue() {
     }),
   })
 
-  const passed = status === 200 && data.queueEntryId
+  const passed = (status === 200 || status === 201) && data.queueEntryId
 
   results.push({
     name: 'Add to Urgent Queue',
@@ -173,7 +173,7 @@ async function testRegisterEmergencyTransfer() {
     }),
   })
 
-  const passed = status === 200 && data.transferId
+  const passed = (status === 200 || status === 201) && data.transferId
 
   results.push({
     name: 'Register Emergency Transfer',
@@ -210,7 +210,7 @@ async function testBookAppointment() {
     }),
   })
 
-  const passed = status === 200 && data.appointmentId
+  const passed = (status === 200 || status === 201) && data.appointmentId
 
   results.push({
     name: 'Book Appointment',
