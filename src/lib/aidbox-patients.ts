@@ -81,6 +81,7 @@ interface FHIRAppointmentMin {
   id?: string
   start?: string
   description?: string
+  reasonCode?: Array<{ text?: string }>
 }
 
 /** FHIR Bundle for Appointment search. */
@@ -105,10 +106,12 @@ export async function getUpcomingAppointment(patientId: string): Promise<{
     const bundle = (await fhirClient.get(path)) as AppointmentBundle
     const entry = bundle.entry?.[0]?.resource
     if (!entry?.id || !entry.start) return null
+    // Prefer reasonCode.text (German) over description (English)
+    const reason = entry.reasonCode?.[0]?.text || entry.description
     return {
       appointmentId: entry.id,
       start: entry.start,
-      reason: entry.description,
+      reason,
     }
   } catch {
     return null
