@@ -27,9 +27,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Add non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# Add non-root user (Debian-style commands for oven/bun image)
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs nextjs
 
 # Copy built standalone app - Next.js puts it in a nested path matching WORKDIR
 COPY --from=builder /app/.next/standalone/app ./
