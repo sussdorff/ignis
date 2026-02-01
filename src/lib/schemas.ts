@@ -208,6 +208,71 @@ export const RequestCallbackResponseSchema = z.object({
 export type RequestCallbackRequest = z.infer<typeof RequestCallbackRequestSchema>
 export type RequestCallbackResponse = z.infer<typeof RequestCallbackResponseSchema>
 
+// --- QuestionnaireResponse: submit (chat/voice collected) ---
+const QuestionnaireResponseAnswerSchema = z.object({
+  valueBoolean: z.boolean().optional(),
+  valueDecimal: z.number().optional(),
+  valueInteger: z.number().optional(),
+  valueDate: z.string().optional(),
+  valueDateTime: z.string().optional(),
+  valueTime: z.string().optional(),
+  valueString: z.string().optional(),
+  valueUri: z.string().optional(),
+  valueCoding: z.object({
+    code: z.string(),
+    display: z.string().optional(),
+    system: z.string().optional(),
+  }).optional(),
+  valueQuantity: z.object({
+    value: z.number(),
+    unit: z.string().optional(),
+    system: z.string().optional(),
+    code: z.string().optional(),
+  }).optional(),
+  valueReference: z.object({ reference: z.string() }).optional(),
+}).refine((obj) => Object.keys(obj).length > 0, { message: 'At least one value[x] required' })
+
+const QuestionnaireResponseItemSchema: z.ZodType<{
+  linkId: string
+  text?: string
+  answer?: Array<Record<string, unknown>>
+  item?: unknown[]
+}> = z.lazy(() =>
+  z.object({
+    linkId: z.string(),
+    text: z.string().optional(),
+    answer: z.array(QuestionnaireResponseAnswerSchema).optional(),
+    item: z.array(QuestionnaireResponseItemSchema).optional(),
+  })
+)
+
+/** API-friendly format (patientId, questionnaire, status, item) */
+export const QuestionnaireResponseSubmitSchema = z.object({
+  patientId: z.string().optional(),
+  questionnaire: z.string().optional(),
+  status: z.enum(['in-progress', 'completed', 'amended', 'entered-in-error', 'stopped']),
+  item: z.array(QuestionnaireResponseItemSchema).optional().default([]),
+  encounterId: z.string().optional(),
+  authored: z.string().optional(),
+  author: z.string().optional(),
+})
+
+/** Wrapped format from ElevenLabs/chat: { questionnaireResponse: {...} } */
+export const WrappedQuestionnaireResponseSchema = z.object({
+  questionnaireResponse: z.object({
+    resourceType: z.literal('QuestionnaireResponse').optional(),
+    questionnaire: z.string().optional(),
+    status: z.enum(['in-progress', 'completed', 'amended', 'entered-in-error', 'stopped']),
+    subject: z.object({ reference: z.string() }).optional(),
+    encounter: z.object({ reference: z.string() }).optional(),
+    authored: z.string().optional(),
+    author: z.object({ reference: z.string() }).optional(),
+    item: z.array(QuestionnaireResponseItemSchema).optional().default([]),
+  }),
+})
+
+export type QuestionnaireResponseSubmit = z.infer<typeof QuestionnaireResponseSubmitSchema>
+
 // --- Doctor: prescription requests ---
 export const PrescriptionRequestActionSchema = z.object({
   action: z.enum(['approve', 'deny']),

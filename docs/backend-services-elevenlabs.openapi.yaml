@@ -21,6 +21,8 @@ tags:
     description: Slots and booking
   - name: queue
     description: Urgent and emergency queue
+  - name: questionnaires
+    description: Questionnaire and response storage
 
 paths:
   /patients/lookup:
@@ -333,6 +335,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IntakeQuestionsResponse'
+
+  /questionnaires/responses:
+    post:
+      operationId: submit_questionnaire_response
+      summary: Submit questionnaire response
+      description: |
+        Store chat-collected questionnaire answers as FHIR QuestionnaireResponse.
+        **When the agent uses it:** After collecting intake answers via voice or chat.
+        Accepts API-friendly format or wrapped `{ questionnaireResponse: {...} }`.
+        **FHIR:** POST /fhir/QuestionnaireResponse.
+      tags:
+        - questionnaires
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireResponseSubmitRequest'
+      responses:
+        '201':
+          description: Questionnaire response created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorWithFields'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
 
   /callback:
     post:
@@ -799,6 +838,74 @@ components:
         reason:
           type: string
           nullable: true
+
+    # --- Questionnaire response ---
+    QuestionnaireResponseSubmitRequest:
+      type: object
+      required:
+        - status
+      properties:
+        patientId:
+          type: string
+          description: FHIR Patient id to link response to
+        questionnaire:
+          type: string
+          description: Questionnaire reference (default patient-intake-de)
+        status:
+          type: string
+          enum:
+            - in-progress
+            - completed
+            - amended
+            - entered-in-error
+            - stopped
+        item:
+          type: array
+          items:
+            type: object
+            required:
+              - linkId
+            properties:
+              linkId:
+                type: string
+              text:
+                type: string
+              answer:
+                type: array
+                items:
+                  type: object
+                  description: FHIR answer value (valueCoding, valueString, etc.)
+        encounterId:
+          type: string
+        authored:
+          type: string
+          format: date-time
+        author:
+          type: string
+
+    QuestionnaireResponse:
+      type: object
+      description: FHIR R4 QuestionnaireResponse resource
+      properties:
+        resourceType:
+          type: string
+          example: QuestionnaireResponse
+        id:
+          type: string
+        questionnaire:
+          type: string
+        status:
+          type: string
+        subject:
+          type: object
+          properties:
+            reference:
+              type: string
+        authored:
+          type: string
+          format: date-time
+        item:
+          type: array
 
     # --- Common errors ---
     ValidationError:

@@ -1,10 +1,18 @@
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 import {
   getQuestionnaireById,
   searchQuestionnaires,
   getActiveQuestionnaires,
   getPatientIntakeQuestionnaire,
 } from '../lib/aidbox-questionnaires'
+import { createQuestionnaireResponse } from '../lib/aidbox-questionnaire-responses'
+import {
+  QuestionnaireResponseSubmitSchema,
+  WrappedQuestionnaireResponseSchema,
+} from '../lib/schemas'
+import type { CreateQuestionnaireResponseInput } from '../lib/aidbox-questionnaire-responses'
 
 const questionnaires = new Hono()
 
@@ -29,6 +37,72 @@ questionnaires.get('/', async (c) => {
   const active = await getActiveQuestionnaires()
   return c.json(active, 200)
 })
+
+// =============================================================================
+// POST /api/questionnaires/responses - store chat/voice collected questionnaire
+// Accepts either API-friendly format or wrapped { questionnaireResponse: {...} }
+// =============================================================================
+const QuestionnaireResponseBodySchema = z.union([
+  QuestionnaireResponseSubmitSchema,
+  WrappedQuestionnaireResponseSchema,
+])
+
+function normalizeToInput(body: z.infer<typeof QuestionnaireResponseBodySchema>): CreateQuestionnaireResponseInput {
+  if ('questionnaireResponse' in body) {
+    const qr = body.questionnaireResponse
+    const subjectRef = qr.subject?.reference
+    const patientId = subjectRef?.startsWith('Patient/')
+      ? subjectRef.slice('Patient/'.length)
+      : subjectRef
+    const encounterRef = qr.encounter?.reference
+    const encounterId = encounterRef?.startsWith('Encounter/')
+      ? encounterRef.slice('Encounter/'.length)
+      : encounterRef
+    return {
+      patientId: patientId ?? undefined,
+      questionnaire: qr.questionnaire,
+      status: qr.status,
+      item: (qr.item ?? []) as CreateQuestionnaireResponseInput['item'],
+      encounterId: encounterId ?? undefined,
+      authored: qr.authored,
+      author: qr.author?.reference,
+    }
+  }
+  return {
+    patientId: body.patientId,
+    questionnaire: body.questionnaire,
+    status: body.status,
+    item: (body.item ?? []) as CreateQuestionnaireResponseInput['item'],
+    encounterId: body.encounterId,
+    authored: body.authored,
+    author: body.author,
+  }
+}
+
+questionnaires.post(
+  '/responses',
+  zValidator('json', QuestionnaireResponseBodySchema, (result, c) => {
+    if (!result.success) {
+      const message = result.error.issues.map((i) => i.message).join('; ')
+      return c.json({ error: 'validation_failed', message }, 400)
+    }
+  }),
+  async (c) => {
+    const body = c.req.valid('json')
+    const input = normalizeToInput(body)
+
+    try {
+      const created = await createQuestionnaireResponse(input)
+      return c.json(created, 201)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('not found') || message.includes('404')) {
+        return c.json({ error: 'not_found', message }, 404)
+      }
+      throw err
+    }
+  }
+)
 
 // =============================================================================
 // GET /api/questionnaires/patient-intake - convenience endpoint

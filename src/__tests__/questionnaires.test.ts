@@ -84,4 +84,98 @@ describe('Questionnaires API', () => {
     expect(sectionTexts).toContain('Notfallkontakt')
     expect(sectionTexts).toContain('Einwilligung')
   })
+
+  describe('POST /api/questionnaires/responses', () => {
+    it('stores API-friendly questionnaire response and returns 201', async () => {
+      const body = {
+        status: 'completed' as const,
+        item: [
+          { linkId: 'visit-reason', answer: [{ valueCoding: { code: 'acute' } }] },
+          { linkId: 'symptom-location', answer: [{ valueCoding: { code: 'head' } }] },
+        ],
+      }
+      const res = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      expect(res.status).toBe(201)
+      const data = await res.json()
+      expect(data.resourceType).toBe('QuestionnaireResponse')
+      expect(data.status).toBe('completed')
+      expect(data.questionnaire).toContain('patient-intake')
+      expect(Array.isArray(data.item)).toBe(true)
+      expect(data.item).toHaveLength(2)
+      expect(data.item[0].linkId).toBe('visit-reason')
+      expect(data.item[0].answer[0].valueCoding.code).toBe('acute')
+      expect(data.id).toBeDefined()
+    })
+
+    it('stores wrapped questionnaireResponse format', async () => {
+      const body = {
+        questionnaireResponse: {
+          questionnaire: 'Questionnaire/patient-intake-de',
+          status: 'completed',
+          item: [
+            { linkId: 'visit-reason', answer: [{ valueCoding: { code: 'checkup' } }] },
+          ],
+        },
+      }
+      const res = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      expect(res.status).toBe(201)
+      const data = await res.json()
+      expect(data.resourceType).toBe('QuestionnaireResponse')
+      expect(data.status).toBe('completed')
+      expect(data.questionnaire).toBe('Questionnaire/patient-intake-de')
+      expect(data.item[0].answer[0].valueCoding.code).toBe('checkup')
+    })
+
+    it('stores response with patientId (subject reference)', async () => {
+      // Use existing patient from Aidbox seed data (patient-2 exists)
+      const body = {
+        patientId: 'patient-2',
+        status: 'completed',
+        item: [{ linkId: 'visit-reason', answer: [{ valueString: 'Routine checkup' }] }],
+      }
+      const res = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      expect(res.status).toBe(201)
+      const data = await res.json()
+      expect(data.subject?.reference).toBe('Patient/patient-2')
+    })
+
+    it('rejects invalid status with 400', async () => {
+      const res = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'invalid-status', item: [] }),
+      })
+
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe('validation_failed')
+    })
+
+    it('rejects missing status with 400', async () => {
+      const res = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item: [] }),
+      })
+
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe('validation_failed')
+    })
+  })
 })
