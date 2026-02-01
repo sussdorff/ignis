@@ -61,6 +61,20 @@ function todayBerlin(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
+/** Get current time in Europe/Berlin as ISO string. */
+function nowBerlin(): Date {
+  // Create a date object representing "now" in Berlin timezone
+  const now = new Date()
+  return now
+}
+
+/** Get minimum allowed slot time (30 minutes from now). */
+function getMinSlotTime(): Date {
+  const now = nowBerlin()
+  now.setMinutes(now.getMinutes() + 30)
+  return now
+}
+
 // =============================================================================
 // GET /api/appointments/slots - get_available_slots
 // =============================================================================
@@ -75,7 +89,19 @@ appointments.get('/slots', async (c) => {
   if (urgency === 'urgent' && date !== todayBerlin()) {
     return c.json({ slots: [] }, 200)
   }
-  const slots = generateStubSlots(date, limit)
+  
+  // Generate slots and filter out past times (must be at least 30 min from now)
+  const allSlots = generateStubSlots(date, limit * 2) // Generate extra to account for filtering
+  const minTime = getMinSlotTime()
+  const today = todayBerlin()
+  
+  // Only filter by time if the requested date is today
+  const filteredSlots = date === today
+    ? allSlots.filter(slot => new Date(slot.start) >= minTime)
+    : allSlots
+  
+  // Limit to requested amount
+  const slots = filteredSlots.slice(0, limit)
   const response: SlotsResponse = { slots }
   return c.json(response, 200)
 })
