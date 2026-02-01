@@ -19,6 +19,37 @@ import {
 const voice = new Hono()
 
 // =============================================================================
+// Action to Level mapping (from AUTHENTICATION-POLICY.md)
+// =============================================================================
+
+const ACTION_LEVEL_MAP: Record<string, number> = {
+  // Level 0: Public information
+  'greeting': 0,
+  'practice_info': 0,
+  
+  // Level 1: View-only, moderately sensitive
+  'view_appointment': 1,
+  'confirm_reminder': 1,
+  
+  // Level 2: Modifications, contact changes
+  'cancel_appointment': 2,
+  'reschedule_appointment': 2,
+  'book_appointment': 2,
+  'change_phone': 2,
+  'change_address': 2,
+  
+  // Level 3: Medical/legal significance
+  'request_prescription': 3,
+  'request_referral': 3,
+  'sick_note': 3,
+  'query_test_results': 3,
+  
+  // Level 4: Highly sensitive (requires out-of-band)
+  'view_test_results': 4,
+  'change_email': 4,
+}
+
+// =============================================================================
 // Schema definitions
 // =============================================================================
 
@@ -34,6 +65,11 @@ const AuthenticateRequestSchema = z.object({
     city: z.string().optional(),           // Level 2+ (alternative to postalCode)
     streetName: z.string().optional(),     // Level 3+
   }),
+})
+
+const AuthorizeActionRequestSchema = z.object({
+  authLevel: z.number().int().min(0).max(3),
+  action: z.string().min(1),
 })
 
 // Response types
@@ -258,5 +294,87 @@ voice.post(
     return c.json(response, 200)
   }
 )
+
+// =============================================================================
+// POST /api/voice/authorize-action
+// Check if auth level permits action
+// =============================================================================
+voice.post(
+  '/authorize-action',
+  zValidator('json', AuthorizeActionRequestSchema, (result, c) => {
+    if (!result.success) {
+      const issues = result.error.issues
+      const message = issues.map((e) => e.message).join('; ')
+      return c.json({ error: 'validation_failed', message }, 400)
+    }
+  }),
+  async (c) => {
+    const { authLevel, action } = c.req.valid('json')
+    
+    // Get required level for this action
+    const requiredLevel = ACTION_LEVEL_MAP[action]
+    
+    if (requiredLevel === undefined) {
+      // Unknown action - be conservative, require Level 2
+      console.warn(`[Voice] Unknown action requested: ${action}, defaulting to Level 2`)
+      const authorized = authLevel >= 2
+      
+      return c.json({
+        authorized,
+        requiredLevel: 2,
+        currentLevel: authLevel,
+        missingFactors: authorized ? undefined : getMissingFactors(authLevel, 2),
+      })
+    }
+    
+    // Check if current level is sufficient
+    const authorized = authLevel >= requiredLevel
+    
+    // Level 4 actions cannot be authorized via voice (require out-of-band)
+    if (requiredLevel === 4) {
+      return c.json({
+        authorized: false,
+        requiredLevel: 4,
+        currentLevel: authLevel,
+        cannotAuthorize: true,
+        reason: 'This action requires human verification for security. Please call during office hours.',
+      })
+    }
+    
+    const response: any = {
+      authorized,
+      requiredLevel,
+      currentLevel: authLevel,
+    }
+    
+    // If not authorized, tell them what factors are missing
+    if (!authorized) {
+      response.missingFactors = getMissingFactors(authLevel, requiredLevel)
+    }
+    
+    return c.json(response)
+  }
+)
+
+/**
+ * Determine which authentication factors are missing to reach target level.
+ */
+function getMissingFactors(currentLevel: number, targetLevel: number): string[] {
+  const factors: string[] = []
+  
+  if (currentLevel < 1 && targetLevel >= 1) {
+    factors.push('birthDate')
+  }
+  
+  if (currentLevel < 2 && targetLevel >= 2) {
+    factors.push('postalCode', 'city')  // Either postal code OR city
+  }
+  
+  if (currentLevel < 3 && targetLevel >= 3) {
+    factors.push('streetName')
+  }
+  
+  return factors
+}
 
 export default voice

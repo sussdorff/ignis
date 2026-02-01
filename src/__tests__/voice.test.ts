@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll } from 'bun:test'
 
 const BASE = process.env.API_BASE_URL ?? 'http://localhost:3000'
+const TEST_API_KEY = process.env.VOICE_API_KEY || 'development-voice-key-change-in-production'
+
+// Headers for authenticated voice API requests
+const voiceHeaders = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${TEST_API_KEY}`,
+}
 
 /**
  * Voice AI Authentication Tests
@@ -24,7 +31,7 @@ describe('Voice API - /api/voice/identify', () => {
   it('returns patient info when phone number matches', async () => {
     const res = await fetch(`${BASE}/api/voice/identify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({ callerPhoneNumber: '+49 170 1234567' }),
     })
     expect(res.ok).toBe(true)
@@ -45,7 +52,7 @@ describe('Voice API - /api/voice/identify', () => {
     // Test with normalized E.164 format
     const res = await fetch(`${BASE}/api/voice/identify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({ callerPhoneNumber: '+491701234567' }),
     })
     expect(res.ok).toBe(true)
@@ -57,7 +64,7 @@ describe('Voice API - /api/voice/identify', () => {
   it('returns found: false for unknown phone number', async () => {
     const res = await fetch(`${BASE}/api/voice/identify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({ callerPhoneNumber: '+49 999 0000000' }),
     })
     expect(res.ok).toBe(true)
@@ -70,7 +77,7 @@ describe('Voice API - /api/voice/identify', () => {
   it('returns 400 for missing callerPhoneNumber', async () => {
     const res = await fetch(`${BASE}/api/voice/identify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({}),
     })
     expect(res.status).toBe(400)
@@ -79,7 +86,7 @@ describe('Voice API - /api/voice/identify', () => {
   it('returns 400 for empty callerPhoneNumber', async () => {
     const res = await fetch(`${BASE}/api/voice/identify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({ callerPhoneNumber: '' }),
     })
     expect(res.status).toBe(400)
@@ -90,7 +97,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('authenticates to Level 1 with correct birth date', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
         factors: { birthDate: '1985-03-15' },
@@ -112,7 +119,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('authenticates to Level 2 with birth date and postal code', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
         factors: {
@@ -135,7 +142,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('authenticates to Level 2 with city as alternative to postal code', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
         factors: {
@@ -158,7 +165,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('authenticates to Level 3 with birth date, postal code and street', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
         factors: {
@@ -187,7 +194,7 @@ describe('Voice API - /api/voice/authenticate', () => {
     const patientId = '29259888-4569-4b1c-9a86-6ebb7a099f29'
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: { birthDate: '1999-01-01' }, // Wrong - actual is 1962-06-02
@@ -218,7 +225,7 @@ describe('Voice API - /api/voice/authenticate', () => {
     const patientId = '43b6ae50-2cca-4934-ad38-282f8934b770' // birthDate 1937-02-13
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: {
@@ -253,7 +260,7 @@ describe('Voice API - /api/voice/authenticate', () => {
     // First get the patient's actual data
     const patientRes = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: {
@@ -272,7 +279,7 @@ describe('Voice API - /api/voice/authenticate', () => {
     // Now test with wrong street name - use patient-2 which we know has full address data
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-2',
         factors: {
@@ -305,7 +312,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('returns Level 0 when no factors provided', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
         factors: {},
@@ -325,7 +332,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('returns 404 for nonexistent patient', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'nonexistent-patient-xyz',
         factors: { birthDate: '1990-01-01' },
@@ -346,7 +353,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('returns 400 for missing patientId', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         factors: { birthDate: '1990-01-01' },
       }),
@@ -357,7 +364,7 @@ describe('Voice API - /api/voice/authenticate', () => {
   it('returns 400 for missing factors object', async () => {
     const res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: 'patient-1',
       }),
@@ -381,7 +388,7 @@ describe('Voice API - Authentication Level Progression', () => {
     // Level 1: birth date only
     let res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: { birthDate: validFactors.birthDate },
@@ -394,7 +401,7 @@ describe('Voice API - Authentication Level Progression', () => {
     // Level 2: + postal code
     res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: {
@@ -410,7 +417,7 @@ describe('Voice API - Authentication Level Progression', () => {
     // Level 3: + street name
     res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId,
         factors: {
@@ -441,7 +448,7 @@ describe('Voice API - Failed Attempt Tracking', () => {
     for (const pid of testPatients) {
       const checkRes = await fetch(`${BASE}/api/voice/authenticate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: voiceHeaders,
         body: JSON.stringify({
           patientId: pid,
           factors: { birthDate: '9999-01-01' }, // Definitely wrong
@@ -472,7 +479,7 @@ describe('Voice API - Failed Attempt Tracking', () => {
     // Second attempt
     let res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: testPatientId,
         factors: { birthDate: '9999-01-02' }, // Wrong
@@ -484,7 +491,7 @@ describe('Voice API - Failed Attempt Tracking', () => {
     // Third attempt - should trigger block
     res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: testPatientId,
         factors: { birthDate: '9999-01-03' }, // Still wrong
@@ -496,7 +503,7 @@ describe('Voice API - Failed Attempt Tracking', () => {
     // Fourth attempt - should be blocked immediately (403)
     res = await fetch(`${BASE}/api/voice/authenticate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: voiceHeaders,
       body: JSON.stringify({
         patientId: testPatientId,
         factors: { birthDate: '2000-01-01' }, // Any date should be blocked now
@@ -505,5 +512,198 @@ describe('Voice API - Failed Attempt Tracking', () => {
     expect(res.status).toBe(403)
     data = (await res.json()) as { blocked?: boolean }
     expect(data.blocked).toBe(true)
+  })
+})
+
+describe('Voice API - /api/voice/authorize-action', () => {
+  it('authorizes Level 0 actions (public info)', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 0,
+        action: 'practice_info',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as {
+      authorized: boolean
+      requiredLevel: number
+      currentLevel: number
+    }
+    
+    expect(data.authorized).toBe(true)
+    expect(data.requiredLevel).toBe(0)
+    expect(data.currentLevel).toBe(0)
+  })
+  
+  it('authorizes Level 1 actions with Level 1 auth', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 1,
+        action: 'view_appointment',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as { authorized: boolean; requiredLevel: number }
+    
+    expect(data.authorized).toBe(true)
+    expect(data.requiredLevel).toBe(1)
+  })
+  
+  it('rejects Level 2 action with Level 0 auth', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 0,
+        action: 'cancel_appointment',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as {
+      authorized: boolean
+      requiredLevel: number
+      missingFactors: string[]
+    }
+    
+    expect(data.authorized).toBe(false)
+    expect(data.requiredLevel).toBe(2)
+    expect(data.missingFactors).toContain('birthDate')
+    expect(data.missingFactors).toContain('postalCode')
+  })
+  
+  it('rejects Level 3 action with Level 2 auth', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 2,
+        action: 'request_prescription',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as {
+      authorized: boolean
+      requiredLevel: number
+      missingFactors: string[]
+    }
+    
+    expect(data.authorized).toBe(false)
+    expect(data.requiredLevel).toBe(3)
+    expect(data.missingFactors).toContain('streetName')
+  })
+  
+  it('allows Level 3 auth to access Level 2 actions', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 3,
+        action: 'cancel_appointment',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as { authorized: boolean }
+    expect(data.authorized).toBe(true)
+  })
+  
+  it('returns cannotAuthorize for Level 4 actions', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 3,
+        action: 'view_test_results',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as {
+      authorized: boolean
+      requiredLevel: number
+      cannotAuthorize: boolean
+      reason: string
+    }
+    
+    expect(data.authorized).toBe(false)
+    expect(data.requiredLevel).toBe(4)
+    expect(data.cannotAuthorize).toBe(true)
+    expect(data.reason).toContain('human verification')
+  })
+  
+  it('defaults unknown actions to Level 2', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 1,
+        action: 'unknown_action_xyz',
+      }),
+    })
+    
+    expect(res.ok).toBe(true)
+    const data = await res.json() as {
+      authorized: boolean
+      requiredLevel: number
+    }
+    
+    expect(data.authorized).toBe(false)
+    expect(data.requiredLevel).toBe(2)
+  })
+  
+  it('requires API key for authorization', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, // No API key
+      body: JSON.stringify({
+        authLevel: 0,
+        action: 'practice_info',
+      }),
+    })
+    
+    expect(res.status).toBe(401)
+    const data = await res.json() as { error: string }
+    expect(data.error).toBe('unauthorized')
+  })
+  
+  it('rejects invalid API key', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer wrong-api-key',
+      },
+      body: JSON.stringify({
+        authLevel: 0,
+        action: 'practice_info',
+      }),
+    })
+    
+    expect(res.status).toBe(401)
+    const data = await res.json() as { error: string }
+    expect(data.error).toBe('unauthorized')
+  })
+  
+  it('validates request parameters', async () => {
+    const res = await fetch(`${BASE}/api/voice/authorize-action`, {
+      method: 'POST',
+      headers: voiceHeaders,
+      body: JSON.stringify({
+        authLevel: 'invalid', // Should be number
+        action: 'test',
+      }),
+    })
+    
+    expect(res.status).toBe(400)
+    const data = await res.json() as { error: string }
+    expect(data.error).toBe('validation_failed')
   })
 })

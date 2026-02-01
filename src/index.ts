@@ -11,6 +11,7 @@ import questionnaires from './routes/questionnaires'
 import auth from './routes/auth'
 import voice from './routes/voice'
 import authTest from './routes/auth-test'
+import { requireVoiceApiKey } from './middleware/voice-api-key'
 import { serveStatic } from 'hono/bun'
 import { handleTwilioWebSocket } from './lib/twilio-websocket'
 import type { ServerWebSocket } from 'bun'
@@ -59,7 +60,9 @@ app.route('/api/questionnaires', questionnaires)
 // Authentication routes (magic link, SMS OTP)
 app.route('/api/auth', auth)
 
-// Voice AI authentication routes (identify_patient, authenticate_patient)
+// Voice AI authentication routes (identify_patient, authenticate_patient, authorize_action)
+// Protected by API key - ElevenLabs must send Authorization: Bearer <api-key>
+app.use('/api/voice/*', requireVoiceApiKey)
 app.route('/api/voice', voice)
 
 // Twilio routes (voice webhooks, call status, WebSocket streaming)
