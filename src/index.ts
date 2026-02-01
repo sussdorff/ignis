@@ -13,6 +13,7 @@ import auth from './routes/auth'
 import voice from './routes/voice'
 import chat from './routes/chat'
 import authTest from './routes/auth-test'
+import demo from './routes/demo'
 import { requireVoiceApiKey } from './middleware/voice-api-key'
 import { serveStatic } from 'hono/bun'
 import { handleTwilioWebSocket } from './lib/twilio-websocket'
@@ -80,6 +81,9 @@ app.route('/api/twilio', twilio)
 if (process.env.NODE_ENV !== 'production') {
   app.route('/api/auth-test', authTest)
 }
+
+// Demo setup routes (for hackathon presentations)
+app.route('/api/demo', demo)
 
 // Note: Frontend is now served separately via Next.js container
 // API-only mode - no static file serving

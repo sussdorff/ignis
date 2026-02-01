@@ -17,7 +17,7 @@ import {
   finishQueueEntry,
   type QueueStatus,
   type Priority,
-} from '../lib/waiting-queue'
+} from '../lib/aidbox-encounters'
 
 const queue = new Hono()
 
@@ -25,7 +25,7 @@ const queue = new Hono()
 // GET /api/queue - get today's waiting queue
 // =============================================================================
 queue.get('/', async (c) => {
-  const entries = getTodayQueue()
+  const entries = await getTodayQueue()
   return c.json({ queue: entries }, 200)
 })
 
@@ -33,7 +33,7 @@ queue.get('/', async (c) => {
 // GET /api/queue/waiting - get patients currently in waiting room
 // =============================================================================
 queue.get('/waiting', async (c) => {
-  const entries = getWaitingPatients()
+  const entries = await getWaitingPatients()
   return c.json({ queue: entries }, 200)
 })
 
@@ -41,7 +41,7 @@ queue.get('/waiting', async (c) => {
 // GET /api/queue/urgent - get urgent/emergency patients
 // =============================================================================
 queue.get('/urgent', async (c) => {
-  const entries = getUrgentPatients()
+  const entries = await getUrgentPatients()
   return c.json({ queue: entries }, 200)
 })
 
@@ -49,7 +49,7 @@ queue.get('/urgent', async (c) => {
 // GET /api/queue/stats - get queue statistics
 // =============================================================================
 queue.get('/stats', async (c) => {
-  const stats = getQueueStats()
+  const stats = await getQueueStats()
   return c.json(stats, 200)
 })
 
@@ -66,17 +66,17 @@ queue.post('/', async (c) => {
     reason?: string
     doctor?: string
   }
-  
+
   try {
     body = await c.req.json()
   } catch {
     return c.json({ error: 'validation_failed', message: 'Invalid JSON' }, 400)
   }
-  
+
   if (!body.patientId) {
     return c.json({ error: 'validation_failed', message: 'patientId is required' }, 400)
   }
-  
+
   // Try to get patient name from database if not provided
   let patientName = body.patientName
   if (!patientName) {
@@ -88,8 +88,8 @@ queue.post('/', async (c) => {
       patientName = [firstName, lastName].filter(Boolean).join(' ') || 'Unbekannt'
     }
   }
-  
-  const entry = addToQueue({
+
+  const entry = await addToQueue({
     patientId: body.patientId,
     patientName: patientName ?? 'Unbekannt',
     appointmentId: body.appointmentId,
@@ -98,7 +98,7 @@ queue.post('/', async (c) => {
     reason: body.reason,
     doctor: body.doctor,
   })
-  
+
   return c.json(entry, 201)
 })
 
@@ -107,19 +107,19 @@ queue.post('/', async (c) => {
 // =============================================================================
 queue.patch('/:id', async (c) => {
   const id = c.req.param('id')
-  
+
   let body: { status?: QueueStatus; priority?: Priority; room?: string; doctor?: string }
   try {
     body = await c.req.json()
   } catch {
     return c.json({ error: 'validation_failed', message: 'Invalid JSON' }, 400)
   }
-  
-  const entry = updateQueueStatus(id, body)
+
+  const entry = await updateQueueStatus(id, body)
   if (!entry) {
     return c.json({ error: 'not_found' }, 404)
   }
-  
+
   return c.json(entry, 200)
 })
 
@@ -128,12 +128,12 @@ queue.patch('/:id', async (c) => {
 // =============================================================================
 queue.delete('/:id', async (c) => {
   const id = c.req.param('id')
-  const success = finishQueueEntry(id)
-  
+  const success = await finishQueueEntry(id)
+
   if (!success) {
     return c.json({ error: 'not_found' }, 404)
   }
-  
+
   return c.json({ ok: true }, 200)
 })
 
@@ -160,15 +160,15 @@ queue.post('/urgent', async (c) => {
   if (!patient) {
     return c.json({ error: 'not_found' }, 404)
   }
-  
+
   // Get patient name
   const name = patient.name?.[0]
   const firstName = name?.given?.join(' ') ?? ''
   const lastName = name?.family ?? ''
   const patientName = [firstName, lastName].filter(Boolean).join(' ') || 'Unbekannt'
-  
+
   // Add to queue with urgent priority
-  const entry = addToQueue({
+  const entry = await addToQueue({
     patientId,
     patientName,
     status: 'wartend',
@@ -176,9 +176,10 @@ queue.post('/urgent', async (c) => {
     reason: reason ?? 'Dringender Fall',
   })
 
+  const urgentPatients = await getUrgentPatients()
   const response: AddToUrgentQueueResponse = {
     queueEntryId: entry.id,
-    position: getUrgentPatients().length,
+    position: urgentPatients.length,
     message: 'Sie wurden in die dringende Warteschlange eingetragen. Wir rufen Sie zurück.',
   }
   return c.json(response, 201)
@@ -197,7 +198,7 @@ queue.post('/emergency', async (c) => {
 
   const parsed = RegisterEmergencyRequestSchema.safeParse(body)
   const data = parsed.success ? parsed.data : {}
-  
+
   // If we have a patient ID, add to queue as emergency
   if (data.patientId) {
     const patient = await getPatientById(data.patientId)
@@ -206,8 +207,8 @@ queue.post('/emergency', async (c) => {
       const firstName = name?.given?.join(' ') ?? ''
       const lastName = name?.family ?? ''
       const patientName = [firstName, lastName].filter(Boolean).join(' ') || 'Notfall'
-      
-      addToQueue({
+
+      await addToQueue({
         patientId: data.patientId,
         patientName,
         status: 'wartend',

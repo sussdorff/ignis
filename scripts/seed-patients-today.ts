@@ -1,10 +1,21 @@
 /**
- * Seed script to add 11 new patients with appointments for today
+ * Seed script to add demo patients with appointments and queue entries for today.
+ *
+ * This script creates:
+ * - 11 test patients
+ * - A schedule for each practitioner
+ * - Slots for each schedule
+ * - Appointments linking patients to slots
+ * - Encounters (queue entries) in Aidbox
+ *
  * Run with: bun run scripts/seed-patients-today.ts
+ *
+ * For a more automated setup using existing patients/practitioners, use:
+ *   curl -X POST http://localhost:3000/api/demo/setup
  */
 
 import { fhirClient } from '../src/lib/fhir-client'
-import { addToQueue, clearQueue, type QueueStatus, type Priority } from '../src/lib/waiting-queue'
+import { addToQueueWithId, clearTodayEncounters, type QueueStatus, type Priority } from '../src/lib/aidbox-encounters'
 
 // Get today's date in ISO format for appointments
 function getTodayDate(): string {
@@ -12,16 +23,17 @@ function getTodayDate(): string {
 }
 
 // Generate appointment times for today
-function getAppointmentTime(index: number): { start: string; end: string } {
+function getAppointmentTime(index: number): { start: string; end: string; startTime: string } {
   const today = getTodayDate()
   const startHour = 8 + Math.floor(index / 2) // Start at 8:00, 2 appointments per hour
   const startMinute = (index % 2) * 30 // 00 or 30 minutes
   const endMinute = startMinute + 30
-  
-  const start = `${today}T${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00+01:00`
+
+  const startTime = `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`
+  const start = `${today}T${startTime}:00+01:00`
   const end = `${today}T${String(endMinute >= 60 ? startHour + 1 : startHour).padStart(2, '0')}:${String(endMinute % 60).padStart(2, '0')}:00+01:00`
-  
-  return { start, end }
+
+  return { start, end, startTime }
 }
 
 // Patient data for 11 new patients
@@ -40,22 +52,42 @@ const newPatients = [
 ]
 
 const doctors = ['Dr. Schmidt', 'Dr. Müller', 'Dr. Weber']
+const practitionerId = 'practitioner-1'
 
 async function seedPatientsAndAppointments() {
   console.log('🌱 Seeding 11 new patients with appointments for today...\n')
-  
+
   const today = getTodayDate()
   console.log(`📅 Today's date: ${today}\n`)
-  
-  // First, clear existing queue and reinitialize
-  clearQueue()
-  console.log('🗑️  Cleared existing queue\n')
-  
+
+  // First, clear existing encounters for today
+  console.log('🗑️  Clearing existing encounters for today...')
+  const cleared = await clearTodayEncounters()
+  console.log(`   Cleared ${cleared} existing encounters\n`)
+
+  // Create schedule for practitioner-1 for today
+  const scheduleId = `schedule-${practitionerId}-${today}`
+  console.log(`📆 Creating schedule: ${scheduleId}`)
+  await fhirClient.put(`Schedule/${scheduleId}`, {
+    resourceType: 'Schedule',
+    id: scheduleId,
+    active: true,
+    actor: [{
+      reference: `Practitioner/${practitionerId}`,
+      display: 'Dr. Anna Schmidt',
+    }],
+    planningHorizon: {
+      start: `${today}T08:00:00+01:00`,
+      end: `${today}T18:00:00+01:00`,
+    },
+  })
+  console.log('   ✅ Schedule created\n')
+
   for (let i = 0; i < newPatients.length; i++) {
     const patientData = newPatients[i]
-    const { start, end } = getAppointmentTime(i)
+    const { start, end, startTime } = getAppointmentTime(i)
     const doctor = doctors[i % doctors.length]
-    
+
     try {
       // 1. Create/Update Patient in FHIR
       const patient = {
@@ -94,16 +126,28 @@ async function seedPatientsAndAppointments() {
           }
         ]
       }
-      
+
       await fhirClient.put(`Patient/${patientData.id}`, patient)
       console.log(`✅ Created patient: ${patientData.given} ${patientData.family} (${patientData.id})`)
-      
-      // 2. Create Appointment for today in FHIR
+
+      // 2. Create Slot for this appointment
+      const slotId = `slot-${scheduleId}-${startTime.replace(':', '')}`
+      await fhirClient.put(`Slot/${slotId}`, {
+        resourceType: 'Slot',
+        id: slotId,
+        schedule: { reference: `Schedule/${scheduleId}` },
+        status: 'busy',
+        start,
+        end,
+      })
+      console.log(`   🕐 Created slot: ${slotId}`)
+
+      // 3. Create Appointment for today in FHIR
       const appointmentId = `appointment-today-${i + 1}`
       const appointment = {
         resourceType: 'Appointment',
         id: appointmentId,
-        status: 'booked',
+        status: patientData.status === 'erwartet' ? 'booked' : 'arrived',
         serviceType: [
           {
             coding: [
@@ -118,6 +162,7 @@ async function seedPatientsAndAppointments() {
         description: patientData.reason,
         start,
         end,
+        slot: [{ reference: `Slot/${slotId}` }],
         participant: [
           {
             actor: {
@@ -128,19 +173,21 @@ async function seedPatientsAndAppointments() {
           },
           {
             actor: {
-              reference: 'Practitioner/practitioner-1',
+              reference: `Practitioner/${practitionerId}`,
               display: doctor
             },
             status: 'accepted'
           }
         ]
       }
-      
+
       await fhirClient.put(`Appointment/${appointmentId}`, appointment)
       console.log(`   📅 Created appointment: ${start.split('T')[1].slice(0, 5)} - ${patientData.reason}`)
-      
-      // 3. Add to waiting queue
-      addToQueue({
+
+      // 4. Create Encounter (queue entry) in Aidbox
+      const encounterId = `encounter-today-${i + 1}`
+      await addToQueueWithId({
+        id: encounterId,
         patientId: patientData.id,
         patientName: `${patientData.given} ${patientData.family}`,
         appointmentId,
@@ -149,17 +196,18 @@ async function seedPatientsAndAppointments() {
         reason: patientData.reason,
         doctor,
       })
-      console.log(`   🪑 Added to queue: ${patientData.status} (${patientData.priority})\n`)
-      
+      console.log(`   🪑 Created encounter: ${patientData.status} (${patientData.priority})\n`)
+
     } catch (err) {
       console.error(`❌ Failed for ${patientData.given} ${patientData.family}:`, err)
     }
   }
-  
+
   console.log('\n✨ Seeding complete!')
   console.log(`   • ${newPatients.length} patients created`)
+  console.log(`   • ${newPatients.length} slots created`)
   console.log(`   • ${newPatients.length} appointments for today`)
-  console.log(`   • ${newPatients.length} queue entries added`)
+  console.log(`   • ${newPatients.length} encounters (queue entries) created in Aidbox`)
 }
 
 // Run the seeding
