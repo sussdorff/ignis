@@ -1,4 +1,5 @@
 import { fhirClient } from './fhir-client'
+import { broadcastAppointmentEvent } from './sse-broadcaster'
 
 /** Minimal FHIR Appointment for read/update. */
 interface FHIRAppointment {
@@ -69,7 +70,17 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       },
     ],
   }
-  return (await fhirClient.post('Appointment', body)) as FHIRAppointment
+  const result = (await fhirClient.post('Appointment', body)) as FHIRAppointment
+
+  // Broadcast SSE event
+  broadcastAppointmentEvent({
+    type: 'created',
+    appointmentId: result.id ?? '',
+    timestamp: new Date().toISOString(),
+    data: { start: result.start, end: result.end, patientId: input.patientId },
+  })
+
+  return result
 }
 
 /**
@@ -103,6 +114,14 @@ export async function cancelAppointment(appointmentId: string): Promise<CancelRe
 
   const updated: FHIRAppointment = { ...appt, status: 'cancelled' }
   await fhirClient.put(`Appointment/${appointmentId}`, updated)
+
+  // Broadcast SSE event
+  broadcastAppointmentEvent({
+    type: 'cancelled',
+    appointmentId,
+    timestamp: new Date().toISOString(),
+  })
+
   return { ok: true, appointmentId }
 }
 
@@ -169,8 +188,64 @@ export async function updateAppointmentStatus(
 ): Promise<{ ok: boolean; error?: string }> {
   const appt = await getAppointmentById(appointmentId)
   if (!appt) return { ok: false, error: 'not_found' }
-  
+
   const updated: FHIRAppointment = { ...appt, status: newStatus }
   await fhirClient.put(`Appointment/${appointmentId}`, updated)
+
+  // Broadcast SSE event
+  broadcastAppointmentEvent({
+    type: 'updated',
+    appointmentId,
+    timestamp: new Date().toISOString(),
+    data: { status: newStatus },
+  })
+
   return { ok: true }
+}
+
+/** Input for rescheduling an appointment. */
+export interface RescheduleAppointmentInput {
+  start: string
+  end: string
+}
+
+export type RescheduleResult =
+  | { ok: true; appointmentId: string; start: string; end: string }
+  | { ok: false; code: 'not_found' }
+  | { ok: false; code: 'conflict'; reason: 'already_cancelled' | 'in_the_past' }
+
+/**
+ * Reschedule an appointment to a new time.
+ */
+export async function rescheduleAppointment(
+  appointmentId: string,
+  input: RescheduleAppointmentInput
+): Promise<RescheduleResult> {
+  const appt = await getAppointmentById(appointmentId)
+  if (!appt) return { ok: false, code: 'not_found' }
+
+  const status = appt.status ?? ''
+  if (status === 'cancelled') return { ok: false, code: 'conflict', reason: 'already_cancelled' }
+
+  // Don't allow rescheduling to a time in the past
+  if (new Date(input.start) < new Date()) {
+    return { ok: false, code: 'conflict', reason: 'in_the_past' }
+  }
+
+  const updated: FHIRAppointment = {
+    ...appt,
+    start: input.start,
+    end: input.end,
+  }
+  await fhirClient.put(`Appointment/${appointmentId}`, updated)
+
+  // Broadcast SSE event
+  broadcastAppointmentEvent({
+    type: 'rescheduled',
+    appointmentId,
+    timestamp: new Date().toISOString(),
+    data: { start: input.start, end: input.end },
+  })
+
+  return { ok: true, appointmentId, start: input.start, end: input.end }
 }

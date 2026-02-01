@@ -230,6 +230,65 @@ export async function getTodayAppointments(): Promise<Appointment[]> {
 }
 
 /**
+ * Reschedule an appointment to a new time
+ */
+export async function rescheduleAppointment(
+  appointmentId: string,
+  start: string,
+  end: string
+): Promise<{ ok: boolean; appointmentId: string; start: string; end: string }> {
+  const res = await fetch(`${API_BASE}/api/appointments/${appointmentId}/reschedule`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start, end }),
+  })
+  if (!res.ok) {
+    throw new Error(`Failed to reschedule appointment: ${res.status}`)
+  }
+  return res.json()
+}
+
+/**
+ * Subscribe to real-time appointment events via SSE
+ * Returns an EventSource that emits 'message' events with appointment updates
+ */
+export function subscribeToAppointmentEvents(
+  onEvent: (event: AppointmentSSEEvent) => void,
+  onError?: (error: Event) => void
+): EventSource {
+  const eventSource = new EventSource(`${API_BASE}/api/appointments/events`)
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as AppointmentSSEEvent
+      onEvent(data)
+    } catch (err) {
+      console.error('[SSE] Failed to parse event:', err)
+    }
+  }
+
+  eventSource.onerror = (error) => {
+    console.error('[SSE] Connection error:', error)
+    onError?.(error)
+  }
+
+  return eventSource
+}
+
+export interface AppointmentSSEEvent {
+  type: 'connected' | 'created' | 'updated' | 'rescheduled' | 'cancelled'
+  appointmentId?: string
+  timestamp?: string
+  clients?: number
+  data?: {
+    start?: string
+    end?: string
+    status?: string
+    patientId?: string
+  }
+}
+
+/**
  * Get queue statistics
  */
 export async function getQueueStats(): Promise<QueueStats> {

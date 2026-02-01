@@ -8,7 +8,9 @@ import { CalendarHeader } from "@/components/calendar-header"
 import { CalendarWeekView } from "@/components/calendar-week-view"
 import { CalendarDayView } from "@/components/calendar-day-view"
 import { NewAppointmentDialog } from "@/components/new-appointment-dialog"
-import { useAppointmentsStore, type Appointment } from "@/lib/appointments-store"
+import { useAppointments, type CalendarAppointment } from "@/lib/use-appointments"
+import { Badge } from "@/components/ui/badge"
+import { Wifi, WifiOff, Loader2 } from "lucide-react"
 
 export default function TerminePage() {
   const router = useRouter()
@@ -17,8 +19,8 @@ export default function TerminePage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number } | null>(null)
 
-  // Use shared appointments store
-  const { appointments, moveAppointment } = useAppointmentsStore()
+  // Use real appointments with SSE sync
+  const { appointments, loading, error, connected, moveAppointment } = useAppointments()
 
   const handlePrevious = () => {
     const newDate = new Date(currentDate)
@@ -54,19 +56,19 @@ export default function TerminePage() {
     setDialogOpen(true)
   }
 
-  const handleAppointmentClick = (appointment: Appointment) => {
+  const handleAppointmentClick = (appointment: CalendarAppointment) => {
     router.push(`/patient/${appointment.patientId}`)
   }
 
   const handleAppointmentMove = useCallback(
-    (
+    async (
       appointmentId: string,
       fromDateKey: string,
       toDateKey: string,
       newHour: number
     ) => {
       const newTime = `${newHour.toString().padStart(2, "0")}:00`
-      moveAppointment(fromDateKey, toDateKey, appointmentId, newTime)
+      await moveAppointment(fromDateKey, toDateKey, appointmentId, newTime)
     },
     [moveAppointment]
   )
@@ -90,6 +92,26 @@ export default function TerminePage() {
             onToday={handleToday}
             onNewAppointment={handleNewAppointment}
           />
+        </div>
+        {/* Connection status */}
+        <div className="flex items-center gap-2">
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {error && (
+            <Badge variant="destructive" className="text-xs">
+              {error}
+            </Badge>
+          )}
+          {connected ? (
+            <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+              <Wifi className="h-3 w-3 mr-1" />
+              Live
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              <WifiOff className="h-3 w-3 mr-1" />
+              Offline
+            </Badge>
+          )}
         </div>
       </header>
 

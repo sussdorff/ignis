@@ -12,11 +12,42 @@ import {
   createAppointment,
   getTodayAppointments,
   updateAppointmentStatus,
+  rescheduleAppointment,
 } from '../lib/aidbox-appointments'
+import { addSSEClient, removeSSEClient, getSSEClientCount } from '../lib/sse-broadcaster'
 import { getSlotsForDate, getNextSlots, getSlotById } from '../lib/aidbox-slots'
 import { getPatientById } from '../lib/aidbox-patients'
 
 const appointments = new Hono()
+
+// =============================================================================
+// GET /api/appointments/events - SSE endpoint for real-time updates
+// IMPORTANT: This must come before any /:appointmentId routes
+// =============================================================================
+appointments.get('/events', (c) => {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      addSSEClient(controller)
+
+      // Send initial connection message
+      const encoder = new TextEncoder()
+      const connectMsg = encoder.encode(`data: ${JSON.stringify({ type: 'connected', clients: getSSEClientCount() })}\n\n`)
+      controller.enqueue(connectMsg)
+    },
+    cancel(controller) {
+      removeSSEClient(controller)
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    },
+  })
+})
 
 /** Today's date in Europe/Berlin (YYYY-MM-DD). */
 function todayBerlin(): string {
@@ -330,6 +361,56 @@ appointments.patch('/:appointmentId/status', async (c) => {
   }
   
   return c.json({ ok: true, appointmentId, status: body.status }, 200)
+})
+
+// =============================================================================
+// PATCH /api/appointments/:appointmentId/reschedule - reschedule appointment
+// =============================================================================
+appointments.patch('/:appointmentId/reschedule', async (c) => {
+  const appointmentId = c.req.param('appointmentId')
+
+  let body: { start?: string; end?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'validation_failed', message: 'Invalid JSON' }, 400)
+  }
+
+  if (!body.start || !body.end) {
+    return c.json({
+      error: 'validation_failed',
+      message: 'start and end are required',
+    }, 400)
+  }
+
+  // Validate ISO date strings
+  const startDate = new Date(body.start)
+  const endDate = new Date(body.end)
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return c.json({
+      error: 'validation_failed',
+      message: 'start and end must be valid ISO date strings',
+    }, 400)
+  }
+
+  const result = await rescheduleAppointment(appointmentId, {
+    start: body.start,
+    end: body.end,
+  })
+
+  if (!result.ok && result.code === 'not_found') {
+    return c.json({ error: 'not_found' }, 404)
+  }
+  if (!result.ok && result.code === 'conflict') {
+    return c.json({ error: 'conflict', reason: result.reason }, 409)
+  }
+
+  return c.json({
+    ok: true,
+    appointmentId: result.appointmentId,
+    start: result.start,
+    end: result.end,
+  }, 200)
 })
 
 export default appointments

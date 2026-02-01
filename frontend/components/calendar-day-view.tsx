@@ -5,7 +5,7 @@ import React from "react"
 import { useState, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import type { Appointment } from "@/lib/appointments-store"
+import type { CalendarAppointment as Appointment } from "@/lib/use-appointments"
 
 interface CalendarDayViewProps {
   currentDate: Date
