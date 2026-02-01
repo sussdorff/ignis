@@ -1,8 +1,9 @@
 /**
  * API client for connecting to the Hono backend
+ * Uses relative paths - API calls go to /api/* which nginx routes to the backend
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const API_BASE = ''
 
 // ============================================================================
 // Types

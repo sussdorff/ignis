@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -7,10 +8,11 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
+    const apiBase = process.env.API_URL || 'http://api:3001'
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*',
+        destination: `${apiBase}/api/:path*`,
       },
     ]
   },

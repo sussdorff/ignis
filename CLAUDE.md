@@ -5,8 +5,8 @@
 ## Tech Stack
 
 - **Runtime**: Bun
-- **Backend**: Hono (TypeScript)
-- **Frontend**: React + Vite
+- **Backend**: Hono (TypeScript) in `src/`
+- **Frontend**: Next.js (App Router) in `frontend/`
 - **FHIR Server**: Aidbox (R4 4.0.1)
 - **Testing**:
   - Backend: Bun Test (integration tests)
@@ -44,7 +44,7 @@ cd frontend && bun run test:watch
 cd frontend && bun run test:coverage
 ```
 
-Test files are located in `frontend/src/**/*.test.tsx`.
+Test files are located in `frontend/**/*.test.tsx` (next to components).
 
 ## Agent Instructions
 

@@ -81,11 +81,8 @@ if (process.env.NODE_ENV !== 'production') {
   app.route('/api/auth-test', authTest)
 }
 
-// Serve frontend static files (built React app)
-app.use('/*', serveStatic({ root: './frontend/dist' }))
-
-// Fallback to index.html for client-side routing (SPA)
-app.get('*', serveStatic({ path: './frontend/dist/index.html' }))
+// Note: Frontend is now served separately via Next.js container
+// API-only mode - no static file serving
 
 // Start server with WebSocket support
 const port = Number(process.env.PORT) || 3000

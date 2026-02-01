@@ -11,7 +11,8 @@ services:
       - ./infra/ssl:/etc/nginx/ssl:ro
     depends_on:
       - aidbox
-      - app
+      - api
+      - frontend
       - app2
     restart: unless-stopped
 
@@ -33,13 +34,34 @@ services:
       retries: 3
       start_period: 30s
 
-  # Ignis App (Bun backend + React frontend)
-  app:
+  # Ignis Frontend (Next.js)
+  frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     environment:
       - PORT=3000
+      - NODE_ENV=production
+      - API_URL=http://api:3001
+    expose:
+      - "3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Ignis API (Bun backend)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - PORT=3001
       - NODE_ENV=production
       - AIDBOX_URL=http://aidbox:8080
       - AIDBOX_ADMIN_ID=${AIDBOX_ADMIN_ID:-admin}
@@ -54,13 +76,13 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       - VOICE_API_KEY=${VOICE_API_KEY}
     expose:
-      - "3000"
+      - "3001"
     depends_on:
       aidbox:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 10s
       timeout: 5s
       retries: 3

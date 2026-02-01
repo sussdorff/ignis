@@ -11,7 +11,8 @@ import {
   Clock,
   ClipboardList,
 } from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 import {
   Sidebar,
@@ -89,13 +90,12 @@ const systemNavItems = [
 ]
 
 export function AppSidebar() {
-  const location = useLocation()
-  const pathname = location.pathname
+  const pathname = usePathname()
 
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <Link to="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Activity className="size-5" />
           </div>
@@ -120,7 +120,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
+                    <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -145,7 +145,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
+                    <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -178,7 +178,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link to={item.url}>
+                    <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
