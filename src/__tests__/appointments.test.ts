@@ -7,17 +7,22 @@ function todayBerlin(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
-// Helper to get a random available slot for testing (default: today)
+// Helper to get a random available slot for testing.
+// When no date given: tries today first (earliest possible), falls back to tomorrow if none available.
 async function getRandomAvailableSlot(
   date?: string
 ): Promise<{ slotId: string; start: string; end: string } | null> {
-  const d = date ?? todayBerlin()
-  const res = await fetch(`${BASE}/api/appointments/slots?date=${d}&limit=20`)
-  if (!res.ok) return null
-  const data = await res.json() as { slots: Array<{ slotId: string; start: string; end: string }> }
-  if (data.slots.length === 0) return null
-  const randomIndex = Math.floor(Math.random() * data.slots.length)
-  return data.slots[randomIndex]
+  const dates = date ? [date] : [todayBerlin(), tomorrowBerlin()]
+  for (const d of dates) {
+    const res = await fetch(`${BASE}/api/appointments/slots?date=${d}&limit=20`)
+    if (!res.ok) continue
+    const data = await res.json() as { slots: Array<{ slotId: string; start: string; end: string }> }
+    if (data.slots.length > 0) {
+      const randomIndex = Math.floor(Math.random() * data.slots.length)
+      return data.slots[randomIndex]
+    }
+  }
+  return null
 }
 
 // Tomorrow in Berlin (YYYY-MM-DD) so booked slots are never "in the past" for cancel tests
@@ -28,20 +33,55 @@ function tomorrowBerlin(): string {
 }
 
 describe('Appointments API', () => {
-  it('GET /api/appointments/slots returns available slots from Aidbox', async () => {
-    const today = todayBerlin()
-    const res = await fetch(`${BASE}/api/appointments/slots?date=${today}&limit=5`)
-    expect(res.ok).toBe(true)
+  describe('GET /api/appointments/slots/next (ig-afr)', () => {
+    it('returns next N slots from now, default 3', async () => {
+      const res = await fetch(`${BASE}/api/appointments/slots/next`)
+      expect(res.ok).toBe(true)
+      const data = (await res.json()) as { slots: Array<{ slotId: string; start: string }> }
+      expect(Array.isArray(data.slots)).toBe(true)
+      expect(data.slots.length).toBe(3)
+      expect(data.slots[0].slotId).toBeDefined()
+      expect(data.slots[0].start).toBeDefined()
+    })
 
-    const data = await res.json() as {
-      slots: Array<{ slotId: string; start: string; end: string; practitionerId?: string; practitionerDisplay?: string }>
+    it('accepts limit query param within 1-20', async () => {
+      const res = await fetch(`${BASE}/api/appointments/slots/next?limit=5`)
+      expect(res.ok).toBe(true)
+      const data = (await res.json()) as { slots: unknown[] }
+      expect(data.slots.length).toBe(5)
+    })
+
+    it('rejects limit above 20 with 400', async () => {
+      const res = await fetch(`${BASE}/api/appointments/slots/next?limit=25`)
+      expect(res.status).toBe(400)
+    })
+
+    it('rejects limit below 1 with 400', async () => {
+      const res = await fetch(`${BASE}/api/appointments/slots/next?limit=0`)
+      expect(res.status).toBe(400)
+    })
+  })
+
+  it('GET /api/appointments/slots returns available slots', async () => {
+    // Try today first (earliest), then tomorrow if today has no slots (e.g. late in day)
+    let data: { slots: Array<{ slotId: string; start: string; end: string; practitionerId?: string; practitionerDisplay?: string }> }
+    let date: string
+    const today = todayBerlin()
+    const todayRes = await fetch(`${BASE}/api/appointments/slots?date=${today}&limit=5`)
+    expect(todayRes.ok).toBe(true)
+    data = (await todayRes.json()) as typeof data
+    if (data.slots.length > 0) {
+      date = today
+    } else {
+      date = tomorrowBerlin()
+      const tomorrowRes = await fetch(`${BASE}/api/appointments/slots?date=${date}&limit=5`)
+      expect(tomorrowRes.ok).toBe(true)
+      data = (await tomorrowRes.json()) as typeof data
     }
     expect(Array.isArray(data.slots)).toBe(true)
     expect(data.slots.length).toBeGreaterThan(0)
-    // Slots from Aidbox have real IDs (not stub-)
     expect(data.slots[0].slotId).toBeDefined()
-    expect(data.slots[0].start).toContain(today)
-    // Should have practitioner info from Schedule
+    expect(data.slots[0].start).toContain(date)
     expect(data.slots[0].practitionerId).toBeDefined()
   })
 

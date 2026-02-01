@@ -1,104 +1,51 @@
 import { Hono } from 'hono'
 import {
   SlotsQuerySchema,
+  SlotsNextQuerySchema,
   BookAppointmentRequestSchema,
-  type Slot,
   type SlotsResponse,
   type BookAppointmentResponse,
   type CancelAppointmentResponse,
 } from '../lib/schemas'
+import {
+  cancelAppointment,
+  createAppointment,
+  getTodayAppointments,
+  updateAppointmentStatus,
+} from '../lib/aidbox-appointments'
+import { getSlotsForDate, getNextSlots, getSlotById } from '../lib/aidbox-slots'
 import { getPatientById } from '../lib/aidbox-patients'
-import { cancelAppointment, getTodayAppointments, updateAppointmentStatus } from '../lib/aidbox-appointments'
-import { fhirClient } from '../lib/fhir-client'
 
 const appointments = new Hono()
-
-const STUB_PRACTITIONER_ID = 'practitioner-1'
-const STUB_PRACTITIONER_DISPLAY = 'Dr. Anna Schmidt'
-const SLOT_DURATION_MINUTES = 30
-const STUB_START_HOUR = 9
-const STUB_START_MINUTE = 0
-const STUB_END_HOUR = 11
-const STUB_END_MINUTE = 30
-
-/** Generate stub slots for a given date (Europe/Berlin). */
-function generateStubSlots(date: string, limit: number): Slot[] {
-  const slots: Slot[] = []
-  let hour = STUB_START_HOUR
-  let minute = STUB_START_MINUTE
-  for (let i = 0; i < limit; i++) {
-    const start = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
-    minute += SLOT_DURATION_MINUTES
-    if (minute >= 60) {
-      minute = 0
-      hour += 1
-    }
-    if (hour > STUB_END_HOUR || (hour === STUB_END_HOUR && minute > STUB_END_MINUTE)) break
-    const end = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+01:00`
-    slots.push({
-      slotId: `stub-${date}-${i}`,
-      start,
-      end,
-      practitionerId: STUB_PRACTITIONER_ID,
-      practitionerDisplay: STUB_PRACTITIONER_DISPLAY,
-    })
-  }
-  return slots
-}
-
-/** Derive start/end from stub slotId (stub-YYYY-MM-DD-index). */
-function stubSlotTimes(slotId: string): { start: string; end: string } | null {
-  const match = /^stub-(\d{4}-\d{2}-\d{2})-(\d+)$/.exec(slotId)
-  if (!match) return null
-  const [, date, indexStr] = match
-  const index = parseInt(indexStr, 10)
-  const slots = generateStubSlots(date, index + 1)
-  const slot = slots[index]
-  return slot ? { start: slot.start, end: slot.end } : null
-}
 
 /** Today's date in Europe/Berlin (YYYY-MM-DD). */
 function todayBerlin(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
-/** Get current time in Europe/Berlin as ISO string. */
-function nowBerlin(): Date {
-  // Create a date object representing "now" in Berlin timezone
-  const now = new Date()
-  return now
-}
-
-/** Get minimum allowed slot time (30 minutes from now). */
+/** Minimum slot start time (30 minutes from now). */
 function getMinSlotTime(): Date {
-  const now = nowBerlin()
+  const now = new Date()
   now.setMinutes(now.getMinutes() + 30)
   return now
 }
 
-/** Get booked appointment times for a given date. */
-async function getBookedTimes(date: string): Promise<Set<string>> {
-  try {
-    const bundle = await fhirClient.get(`Appointment?date=${date}&status=booked&_count=100`) as {
-      entry?: Array<{ resource?: { start?: string } }>
-    }
-    const bookedTimes = new Set<string>()
-    for (const entry of bundle.entry || []) {
-      const start = entry.resource?.start
-      if (start) {
-        // Normalize to just hour:minute for comparison
-        const time = start.slice(11, 16) // Extract HH:MM
-        bookedTimes.add(time)
-      }
-    }
-    return bookedTimes
-  } catch {
-    return new Set()
+// =============================================================================
+// GET /api/appointments/slots/next - next N available slots from now (ig-afr)
+// =============================================================================
+appointments.get('/slots/next', async (c) => {
+  const parsed = SlotsNextQuerySchema.safeParse(c.req.query())
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((e) => e.message).join('; ')
+    return c.json({ error: 'validation_failed', message }, 400)
   }
-}
+  const { limit } = parsed.data
+  const slots = await getNextSlots(limit)
+  return c.json({ slots } satisfies SlotsResponse, 200)
+})
 
 // =============================================================================
-// GET /api/appointments/slots - get_available_slots
+// GET /api/appointments/slots - get_available_slots (FHIR Slot query)
 // =============================================================================
 appointments.get('/slots', async (c) => {
   const parsed = SlotsQuerySchema.safeParse(c.req.query())
@@ -111,37 +58,11 @@ appointments.get('/slots', async (c) => {
   if (urgency === 'urgent' && date !== todayBerlin()) {
     return c.json({ slots: [] }, 200)
   }
-  
-  // Generate slots and filter
-  const allSlots = generateStubSlots(date, limit * 3) // Generate extra to account for filtering
-  const minTime = getMinSlotTime()
+
   const today = todayBerlin()
-  
-  // Get already booked times for this date
-  const bookedTimes = await getBookedTimes(date)
-  
-  // Filter out:
-  // 1. Past times (if today) - must be at least 30 min from now
-  // 2. Already booked times
-  const filteredSlots = allSlots.filter(slot => {
-    // Check if slot is in the past (only for today)
-    if (date === today && new Date(slot.start) < minTime) {
-      return false
-    }
-    
-    // Check if slot is already booked
-    const slotTime = slot.start.slice(11, 16) // Extract HH:MM
-    if (bookedTimes.has(slotTime)) {
-      return false
-    }
-    
-    return true
-  })
-  
-  // Limit to requested amount
-  const slots = filteredSlots.slice(0, limit)
-  const response: SlotsResponse = { slots }
-  return c.json(response, 200)
+  const minStart = date === today ? getMinSlotTime() : undefined
+  const slots = await getSlotsForDate(date, limit, { minStartTime: minStart })
+  return c.json({ slots } satisfies SlotsResponse, 200)
 })
 
 // =============================================================================
@@ -163,8 +84,8 @@ appointments.post('/', async (c) => {
 
   const { slotId, patientId } = parsed.data
 
-  const times = stubSlotTimes(slotId)
-  if (!times) {
+  const slot = await getSlotById(slotId)
+  if (!slot) {
     return c.json(
       { error: 'not_found', resource: 'slot', slotId },
       404
@@ -179,23 +100,39 @@ appointments.post('/', async (c) => {
     )
   }
 
-  const response: BookAppointmentResponse = {
-    appointment: {
-      resourceType: 'Appointment',
-      id: `stub-${Date.now()}`,
-      status: 'booked',
-      start: times.start,
-      end: times.end,
-      participant: [
-        { actor: { reference: `Patient/${patientId}` }, status: 'accepted' },
-        { actor: { reference: `Practitioner/${STUB_PRACTITIONER_ID}` }, status: 'accepted' },
-      ],
-    },
-    start: times.start,
-    end: times.end,
-    confirmationMessage: `Ihre Termin wurde für ${times.start} bestätigt.`,
+  try {
+    const appt = await createAppointment({
+      start: slot.start,
+      end: slot.end,
+      patientId,
+      slotId,
+      practitionerId: slot.practitionerId,
+      practitionerDisplay: slot.practitionerDisplay,
+    })
+    const response: BookAppointmentResponse = {
+      appointment: {
+        resourceType: 'Appointment',
+        id: appt.id ?? `apt-${Date.now()}`,
+        status: 'booked',
+        start: slot.start,
+        end: slot.end,
+        participant: [
+          { actor: { reference: `Patient/${patientId}` }, status: 'accepted' },
+          { actor: { reference: `Practitioner/${slot.practitionerId}` }, status: 'accepted' },
+        ],
+      },
+      start: slot.start,
+      end: slot.end,
+      confirmationMessage: `Ihre Termin wurde für ${slot.start} bestätigt.`,
+    }
+    return c.json(response, 201)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('409') || msg.includes('conflict')) {
+      return c.json({ error: 'slot_unavailable', message: 'Slot is no longer available' }, 409)
+    }
+    throw err
   }
-  return c.json(response, 201)
 })
 
 // =============================================================================

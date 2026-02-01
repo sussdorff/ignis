@@ -189,6 +189,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/InternalError'
 
+  /appointments/slots/next:
+    get:
+      operationId: get_next_available_slots
+      summary: Get next available slots from now
+      description: |
+        Return the next N appointment slots available for booking, searching forward from
+        the current date/time. No date parameter required—use when patient asks
+        "when's the next available appointment?" during voice calls.
+        **When the agent uses it:** When the patient wants to know the next available
+        times without specifying a date.
+        **FHIR:** Slot resources or derived from Schedule + existing Appointments.
+      tags:
+        - appointments
+      parameters:
+        - name: limit
+          in: query
+          description: Number of slots to return (default 3, max 20)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 3
+      responses:
+        '200':
+          description: List of next available slots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotsResponse'
+        '400':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Backend or Aidbox error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
   /appointments:
     post:
       operationId: book_appointment

@@ -109,6 +109,11 @@ export const SlotsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(10),
 })
 
+/** Query params for GET /api/appointments/slots/next - next N slots from now */
+export const SlotsNextQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).optional().default(3),
+})
+
 export const SlotSchema = z.object({
   slotId: z.string(),
   start: z.string(),

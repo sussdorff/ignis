@@ -36,6 +36,42 @@ export type CancelResult =
   | { ok: false; code: 'not_found' }
   | { ok: false; code: 'conflict'; reason: 'already_cancelled' | 'in_the_past' }
 
+/** Minimal payload for creating an Appointment. */
+export interface CreateAppointmentInput {
+  start: string
+  end: string
+  patientId: string
+  practitionerId?: string
+  practitionerDisplay?: string
+  slotId?: string
+}
+
+/**
+ * Create an Appointment in Aidbox.
+ * References the Slot if slotId provided (FHIR workflow).
+ * Returns the created resource with server-assigned id, or throws on error.
+ */
+export async function createAppointment(input: CreateAppointmentInput): Promise<FHIRAppointment> {
+  const body: FHIRAppointment = {
+    resourceType: 'Appointment',
+    status: 'booked',
+    start: input.start,
+    end: input.end,
+    ...(input.slotId && { slot: [{ reference: `Slot/${input.slotId}` }] }),
+    participant: [
+      { actor: { reference: `Patient/${input.patientId}` }, status: 'accepted' },
+      {
+        actor: {
+          reference: `Practitioner/${input.practitionerId ?? 'practitioner-1'}`,
+          display: input.practitionerDisplay ?? 'Dr. Anna Schmidt',
+        },
+        status: 'accepted',
+      },
+    ],
+  }
+  return (await fhirClient.post('Appointment', body)) as FHIRAppointment
+}
+
 /**
  * Get an appointment by ID from Aidbox.
  * Returns null if not found (404).
