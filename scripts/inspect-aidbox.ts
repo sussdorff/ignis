@@ -23,6 +23,35 @@ async function main(): Promise<void> {
   console.log('Aidbox (read-only) –', aidboxConfig.fhirBaseUrl)
   console.log('')
 
+  // Last 10 patients (newest first by _lastUpdated)
+  try {
+    const patientBundle = await fhirClient.get<FHIRBundle>(
+      'Patient?_count=10&_sort=-_lastUpdated'
+    )
+    const entries = patientBundle.entry ?? []
+    const patients = entries
+      .map((e) => e.resource)
+      .filter((r): r is NonNullable<typeof r> => r != null && (r as { resourceType?: string }).resourceType === 'Patient')
+    console.log('Last 10 patients (newest first):')
+    for (const r of patients) {
+      const id = r.id ?? '(no id)'
+      const name =
+        Array.isArray(r.name)
+          ? (r.name[0] as { family?: string; given?: string[] })?.family +
+            ', ' +
+            (r.name[0] as { given?: string[] })?.given?.join(' ')
+          : ''
+      const meta = r.meta as { lastUpdated?: string } | undefined
+      const lastUpdated = meta?.lastUpdated ?? ''
+      console.log(`  ${id}${name ? `  ${name}` : ''}  ${lastUpdated ? `lastUpdated=${lastUpdated}` : ''}`)
+    }
+    console.log('')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.log('Last 10 patients: error –', msg)
+    console.log('')
+  }
+
   const resourceTypes = [
     // Core patient/provider resources
     'Patient',
