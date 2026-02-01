@@ -13,26 +13,7 @@ services:
       - aidbox
       - api
       - frontend
-      - app2
     restart: unless-stopped
-
-  # Ignis App2 (Next.js Design System Frontend)
-  app2:
-    build:
-      context: ./DESIGN/ignis-design-system
-      dockerfile: Dockerfile
-    environment:
-      - PORT=3001
-      - NODE_ENV=production
-    expose:
-      - "3001"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/app2"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
 
   # Ignis Frontend (Next.js)
   frontend:
