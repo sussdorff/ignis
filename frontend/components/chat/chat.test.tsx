@@ -159,6 +159,75 @@ describe('ChatInput', () => {
 
     expect(screen.getByPlaceholderText('Ihre Frage hier...')).toBeInTheDocument()
   })
+
+  describe('voice mode integration', () => {
+    it('renders voice toggle when onVoiceToggle is provided', () => {
+      render(<ChatInput onSend={vi.fn()} onVoiceToggle={vi.fn()} />)
+
+      expect(screen.getByTestId('voice-mode-toggle')).toBeInTheDocument()
+    })
+
+    it('does not render voice toggle when onVoiceToggle is not provided', () => {
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(screen.queryByTestId('voice-mode-toggle')).not.toBeInTheDocument()
+    })
+
+    it('disables input when voice mode is enabled', () => {
+      render(
+        <ChatInput
+          onSend={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="listening"
+        />
+      )
+
+      expect(screen.getByTestId('chat-input')).toBeDisabled()
+      expect(screen.getByTestId('chat-send-button')).toBeDisabled()
+    })
+
+    it('shows voice mode placeholder when voice mode is enabled', () => {
+      render(
+        <ChatInput
+          onSend={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="listening"
+        />
+      )
+
+      expect(
+        screen.getByPlaceholderText('Sprachmodus aktiv - sprechen Sie...')
+      ).toBeInTheDocument()
+    })
+
+    it('shows voice mode help text when voice mode is enabled', () => {
+      render(
+        <ChatInput
+          onSend={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="listening"
+        />
+      )
+
+      expect(
+        screen.getByText(
+          'Klicken Sie auf das Mikrofon, um den Sprachmodus zu beenden'
+        )
+      ).toBeInTheDocument()
+    })
+
+    it('calls onVoiceToggle when voice toggle is clicked', () => {
+      const handleVoiceToggle = vi.fn()
+      render(<ChatInput onSend={vi.fn()} onVoiceToggle={handleVoiceToggle} />)
+
+      fireEvent.click(screen.getByTestId('voice-mode-toggle'))
+
+      expect(handleVoiceToggle).toHaveBeenCalledTimes(1)
+    })
+  })
 })
 
 describe('ChatContainer', () => {
@@ -225,5 +294,78 @@ describe('ChatContainer', () => {
     )
 
     expect(screen.getByTestId('chat-input')).toBeDisabled()
+  })
+
+  describe('voice mode integration', () => {
+    it('renders voice toggle when onVoiceToggle is provided', () => {
+      render(
+        <ChatContainer
+          messages={mockMessages}
+          onSendMessage={vi.fn()}
+          onVoiceToggle={vi.fn()}
+        />
+      )
+
+      expect(screen.getByTestId('voice-mode-toggle')).toBeInTheDocument()
+    })
+
+    it('shows voice indicator when voice mode is enabled and not idle', () => {
+      render(
+        <ChatContainer
+          messages={mockMessages}
+          onSendMessage={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="listening"
+        />
+      )
+
+      expect(screen.getByTestId('voice-indicator')).toBeInTheDocument()
+    })
+
+    it('does not show voice indicator when voice mode is disabled', () => {
+      render(
+        <ChatContainer
+          messages={mockMessages}
+          onSendMessage={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={false}
+          voiceState="idle"
+        />
+      )
+
+      expect(screen.queryByTestId('voice-indicator')).not.toBeInTheDocument()
+    })
+
+    it('does not show voice indicator when voice state is idle', () => {
+      render(
+        <ChatContainer
+          messages={mockMessages}
+          onSendMessage={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="idle"
+        />
+      )
+
+      expect(screen.queryByTestId('voice-indicator')).not.toBeInTheDocument()
+    })
+
+    it('passes voice props to chat input', () => {
+      render(
+        <ChatContainer
+          messages={mockMessages}
+          onSendMessage={vi.fn()}
+          onVoiceToggle={vi.fn()}
+          isVoiceModeEnabled={true}
+          voiceState="listening"
+          isVoiceSupported={true}
+        />
+      )
+
+      // Voice toggle should be in enabled state
+      const voiceToggle = screen.getByTestId('voice-mode-toggle')
+      expect(voiceToggle).toHaveAttribute('aria-pressed', 'true')
+    })
   })
 })
