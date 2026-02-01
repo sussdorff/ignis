@@ -16,7 +16,6 @@
     "test:voice": "bun run scripts/test-agent-voice.ts"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@hono/zod-validator": "^0.7.6",
     "@types/node": "^25.1.0",
     "axios": "^1.13.4",
