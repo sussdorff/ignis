@@ -1,0 +1,21 @@
+{
+  "name": "Ignis Demo Praxis",
+  "agent_id": "agent_8101kgaq3e85ecqay2ctsjgp0y2e",
+  "llm": "gemini-2.5-flash",
+  "first_message": "Hello, this is Ignis Demo Praxis. How can I help you today?",
+  "language": "en",
+  "voice": {
+    "voice_id": "WyFXw4PzMbRnp8iLMJwY",
+    "model_id": "eleven_turbo_v2",
+    "stability": 0.5,
+    "speed": 1,
+    "similarity_boost": 0.8
+  },
+  "phone_numbers": [
+    {
+      "phone_number": "+15722314881",
+      "label": "SVe",
+      "provider": "twilio"
+    }
+  ]
+}

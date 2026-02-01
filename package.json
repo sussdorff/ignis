@@ -13,7 +13,10 @@
     "test:agent": "bun run scripts/test-agent-simulation.ts",
     "test:agent:all": "bun run scripts/test-agent-simulation.ts --all",
     "test:backend": "bun run scripts/test-backend-integration.ts",
-    "test:voice": "bun run scripts/test-agent-voice.ts"
+    "test:voice": "bun run scripts/test-agent-voice.ts",
+    "elevenlabs:export": "bun run elevenlabs/export-agent.ts",
+    "elevenlabs:import": "bun run elevenlabs/import-agent.ts",
+    "elevenlabs:import:dry": "bun run elevenlabs/import-agent.ts --dry-run"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",

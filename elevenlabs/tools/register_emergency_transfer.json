@@ -1,0 +1,55 @@
+{
+  "type": "webhook",
+  "name": "register_emergency_transfer",
+  "description": "Record emergency detection before transferring to human agent. Call this immediately when emergency is detected, then perform transfer",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/queue/emergency",
+    "method": "POST",
+    "path_params_schema": {},
+    "query_params_schema": null,
+    "request_body_schema": {
+      "type": "object",
+      "required": [],
+      "description": "Emergency transfer registration data",
+      "properties": {
+        "patientId": {
+          "type": "string",
+          "description": "FHIR Patient ID if known",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "phone": {
+          "type": "string",
+          "description": "Caller phone number",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "reason": {
+          "type": "string",
+          "description": "Emergency reason or keyword detected (e.g., Brustschmerzen, chest pain)\",",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      }
+    },
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}

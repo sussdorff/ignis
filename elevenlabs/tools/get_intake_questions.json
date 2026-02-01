@@ -1,0 +1,57 @@
+{
+  "type": "webhook",
+  "name": "get_intake_questions",
+  "description": "Get follow-up intake questions to ask the patient after booking an appointment. Call this after successfully booking to get relevant questions based on the appointment type and reason",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/appointments/intake-questions",
+    "method": "GET",
+    "path_params_schema": {},
+    "query_params_schema": {
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "The reason for the appointment (e.g., \"Impfung\", \"Vorsorge\", \"Rückenschmerzen\")",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "type": {
+          "type": "string",
+          "description": "Appointment type: routine, urgent, or followup",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "patientId": {
+          "type": "string",
+          "description": "Patient ID for personalized questions",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      },
+      "required": [
+        "reason",
+        "type",
+        "patientId"
+      ]
+    },
+    "request_body_schema": null,
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}

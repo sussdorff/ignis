@@ -1,0 +1,63 @@
+{
+  "type": "webhook",
+  "name": "get_available_slots",
+  "description": "Return bookable appointment slots for a given date. Use when patient is ready to book an appointment.",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/appointments/slots",
+    "method": "GET",
+    "path_params_schema": {},
+    "query_params_schema": {
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date to check in YYYY-MM-DD format",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "practitionerId": {
+          "type": "string",
+          "description": "Specific doctor ID (omit for any available)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max slots to return (default 10)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "urgency": {
+          "type": "string",
+          "description": "routine or urgent (urgent = same-day only)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "request_body_schema": null,
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}

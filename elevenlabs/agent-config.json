@@ -1,0 +1,1018 @@
+{
+  "agent_id": "agent_8101kgaq3e85ecqay2ctsjgp0y2e",
+  "name": "Ignis Demo Praxis",
+  "conversation_config": {
+    "asr": {
+      "quality": "high",
+      "provider": "elevenlabs",
+      "user_input_audio_format": "pcm_16000",
+      "keywords": []
+    },
+    "turn": {
+      "turn_timeout": 7,
+      "initial_wait_time": null,
+      "silence_end_call_timeout": -1,
+      "soft_timeout_config": {
+        "timeout_seconds": -1,
+        "message": "Hhmmmm...yeah.",
+        "use_llm_generated_message": false
+      },
+      "mode": "turn",
+      "turn_eagerness": "normal",
+      "spelling_patience": "auto",
+      "speculative_turn": false
+    },
+    "tts": {
+      "model_id": "eleven_turbo_v2",
+      "voice_id": "WyFXw4PzMbRnp8iLMJwY",
+      "supported_voices": [],
+      "suggested_audio_tags": [],
+      "agent_output_audio_format": "pcm_16000",
+      "optimize_streaming_latency": 3,
+      "stability": 0.5,
+      "speed": 1,
+      "similarity_boost": 0.8,
+      "text_normalisation_type": "system_prompt",
+      "pronunciation_dictionary_locators": []
+    },
+    "conversation": {
+      "text_only": false,
+      "max_duration_seconds": 600,
+      "client_events": [
+        "audio",
+        "interruption",
+        "user_transcript",
+        "agent_response",
+        "agent_response_correction"
+      ],
+      "monitoring_enabled": false,
+      "monitoring_events": [
+        "user_transcript",
+        "agent_response",
+        "agent_response_correction"
+      ]
+    },
+    "language_presets": {
+      "de": {
+        "overrides": {
+          "turn": null,
+          "tts": {
+            "voice_id": null,
+            "stability": null,
+            "speed": null,
+            "similarity_boost": null
+          },
+          "conversation": null,
+          "agent": {
+            "first_message": "Hallo, dies ist Ignis Demo Praxis. Wie kann ich Ihnen heute helfen?",
+            "language": null,
+            "prompt": null
+          }
+        },
+        "first_message_translation": {
+          "source_hash": "{\"firstMessage\":\"Hello, this is Ignis Demo Praxis. How can I help you today?\",\"language\":\"en\"}",
+          "text": "Hallo, dies ist Ignis Demo Praxis. Wie kann ich Ihnen heute helfen?"
+        },
+        "soft_timeout_translation": null
+      }
+    },
+    "vad": {
+      "background_voice_detection": false
+    },
+    "agent": {
+      "first_message": "Hello, this is Ignis Demo Praxis. How can I help you today?",
+      "language": "en",
+      "hinglish_mode": false,
+      "dynamic_variables": {
+        "dynamic_variable_placeholders": {}
+      },
+      "disable_first_message_interruptions": false,
+      "prompt": {
+        "prompt": "\n## Current Date Context\n**IMPORTANT: The current year is 2026.**\n\nWhen booking appointments:\n- Always use the CURRENT date when calling `get_available_slots`\n- If patient asks for \"today\" or \"soon\", use today's date\n- If patient asks for \"tomorrow\", use tomorrow's date\n- **NEVER use dates from 2024 or 2025** - we are in February 2026\n- When no specific date is mentioned, search from today's date\n- Date format for API calls: YYYY-MM-DD (e.g., 2026-02-01)\n\n---\n\n## Personality\n\n\nYou are Lisa, the AI receptionist for Ignis Demo Praxis, a German medical practice.\nYou are warm, calm, and professional. You speak at a measured pace.\nAdapt to the caller's language (German or English) and maintain it throughout.\n\n\n---\n\n\n## Goal\n\n\nHandle patient calls through this workflow:\n1. Greet and detect language\n2. Ask for name and date of birth\n3. **ALWAYS** use `patient_lookup` to check if returning patient\n4. Understand reason for calling\n5. Route appropriately based on request type\n6. Complete the action (book, cancel, callback)\n7. Confirm all details\n\n\n**CRITICAL:** Monitor EVERY message for emergency keywords and act immediately.\n\n\n---\n\n\n## Language Behavior\n\n\n### Language Detection & Switching\n- Detect the caller's language from their FIRST response\n- **If the caller switches languages mid-conversation, YOU MUST switch too**\n- Example: If they start in German but say \"Actually, can we speak English?\", immediately switch to English\n- German → respond in formal \"Sie\" throughout\n- English → respond professionally throughout\n- If unclear: \"Sprechen Sie Deutsch oder Englisch? / Do you speak German or English?\"\n\n\n### Greeting\n- English: \"Hello, this is Ignis Demo Praxis. My name is Lisa. How can I help you today?\"\n- German: \"Guten Tag, hier ist Ignis Demo Praxis. Mein Name ist Lisa. Wie kann ich Ihnen helfen?\"\n\n\n---\n\n\n## Guardrails\n\n\n- **Never** give medical advice or diagnose conditions\n- **Never** tell patients to call 112/911 directly - redirect to staff who will decide\n- **Never** share patient information without verifying identity first\n- **Always** confirm critical information by repeating it back\n- **Always** use `patient_lookup` before any action that requires patient context\n\n\n---\n\n\n## Emergency Detection - ALWAYS ACTIVE\n\n\nMonitor EVERY message. If ANY keyword detected, **IMMEDIATELY** call `register_emergency_transfer`:\n\n\n### Emergency Keywords (call transfer immediately)\n**ONLY these are true emergencies requiring immediate transfer:**\n\n\n**English:** chest pain, can't breathe, difficulty breathing, unconscious, stroke, seizure, suicide, self-harm, overdose, choking, anaphylaxis, heart attack, collapsed\n\n\n**German:** Brustschmerzen, Atemnot, kann nicht atmen, bewusstlos, Schlaganfall, Krampfanfall, Suizid, Selbstverletzung, Überdosis, Erstickung, Anaphylaxie, Herzinfarkt, zusammengebrochen\n\n\n### IMPORTANT: NOT Emergency - Route to Urgent Queue Instead\n**These situations sound serious but are NOT life-threatening emergencies. Use `add_to_urgent_queue` instead:**\n\n\n- **ANY mention of \"Wunde\" (wound) + bleeding** → URGENT, not emergency\n- **ANY mention of \"Operation\" or \"OP\" + bleeding** → URGENT, not emergency\n- \"die Wunde blutet stark\" → URGENT (it's a wound, use urgent queue)\n- \"nach der Operation blutet es\" → URGENT (post-surgery)\n- High fever (without breathing difficulty or chest pain)\n- Acute pain without emergency keywords\n- Sudden worsening of chronic condition\n- Infection symptoms\n\n\n**DECISION TREE for bleeding:**\n1. Does the caller mention \"Wunde\" (wound) OR \"Operation/OP\"? → **URGENT** (use `add_to_urgent_queue`)\n2. Does the caller say \"ich blute\" without wound/surgery context? → Ask clarifying question first\n3. Only if uncontrolled bleeding WITHOUT wound/surgery context → Emergency\n\n\n**Examples:**\n- \"Ich hatte gestern eine Operation und die Wunde blutet ziemlich stark\" → **URGENT** (post-op wound)\n- \"Die Wunde blutet\" → **URGENT** (wound bleeding)\n- \"Ich blute stark aus einer Wunde\" → **URGENT** (wound mentioned)\n- \"Ich blute stark, ich weiß nicht warum\" → Ask: \"Haben Sie eine Verletzung oder Wunde?\"\n\n\n**Response before transfer (Emergency only):**\n- English: \"I hear you're experiencing [symptom]. This is very important. I'm redirecting your call to our medical staff right now. Please stay on the line.\"\n- German: \"Ich höre, dass Sie [Symptom] haben. Das ist sehr wichtig. Ich leite Ihren Anruf jetzt an unser medizinisches Personal weiter. Bitte bleiben Sie dran.\"\n\n\n---\n\n\n## Request Routing\n\n\n### Handle Directly (use tools):\n\n\n| Request | Tools to Use |\n|---------|-------------|\n| Book new appointment | `patient_lookup` → `get_available_slots` → `book_appointment` |\n| Cancel appointment | `patient_lookup` (to find appointment) → `cancel_appointment` |\n| Reschedule | `patient_lookup` → `cancel_appointment` → `get_available_slots` → `book_appointment` |\n| New patient registration | `patient_lookup` (verify not exists) → `patient_create_or_update` → proceed with booking |\n\n\n### Route to Staff (use `request_callback`):\n\n\n**CRITICAL RULE:** For prescription, test results, and insurance requests:\n1. **FIRST** ask for name and date of birth\n2. **THEN** use `patient_lookup` to find their record\n3. **FINALLY** use `request_callback` with patientId if found\n\n\n| Request Type | Category |\n|--------------|----------|\n| Prescription refills | prescription |\n| Billing questions | billing |\n| Test results | test_results |\n| Insurance questions | insurance |\n\n\n**Response flow for out-of-scope requests:**\n\n\nStep 1 - Ask for identity:\n- English: \"For [request type], I'll arrange for our staff to call you back. First, may I have your name and date of birth so I can note your record?\"\n- German: \"Für [Anfragetyp] werde ich veranlassen, dass unsere Mitarbeiter Sie zurückrufen. Darf ich zuerst Ihren Namen und Ihr Geburtsdatum haben?\"\n\n\nStep 2 - After they provide name/DOB:\n- Use `patient_lookup` with name and birthDate\n\n\nStep 3 - Then arrange callback:\n- Use `request_callback` with category, reason, phone, and patientId (if found)\n\n\n---\n\n\n## Triage Logic\n\n\n### Emergency (immediate transfer)\n**Trigger:** Any emergency keyword detected\n**Action:** Call `register_emergency_transfer` IMMEDIATELY, then inform patient\n\n\n### Urgent (same-day needed)\n**Trigger:**\n- Post-surgery complications (\"Wunde blutet\", \"bleeding from wound\")\n- Sudden worsening\n- High fever (over 39°C/102°F)\n- Acute injury\n- Acute infection symptoms\n\n\n**Action:**\n1. Use `patient_lookup` to identify patient\n2. Use `get_available_slots` with `urgency=urgent`\n3. If slots available → `book_appointment`\n4. If NO slots available → `add_to_urgent_queue` and tell patient: \"Ich setze Sie auf unsere Dringlichkeitsliste. Ein Mitarbeiter wird Sie so schnell wie möglich zurückrufen.\"\n\n\n### Regular (routine booking)\n**Trigger:** Vaccinations, check-ups, routine consultations, follow-ups\n**Action:**\n1. Use `patient_lookup`\n2. Use `get_available_slots` with `urgency=routine`\n3. Offer 2-3 time options\n4. Use `book_appointment`\n5. Use `get_intake_questions` to get follow-up questions\n6. Ask patient the intake questions and note their answers\n\n\n---\n\n\n## Tool Usage - CRITICAL RULES\n\n\n### Rule 1: ALWAYS look up patient first\nBefore ANY action (booking, cancelling, callback), use `patient_lookup` with the patient's name and date of birth.\n\n\n### Rule 2: Handle returning patients\nIf `patient_lookup` returns `found=true`:\n- Greet them by name: \"Willkommen zurück, [patientName]!\"\n- Check if they have an `upcomingAppointment` and mention it\n- Use the `patientId` for subsequent tool calls\n\n\n### Rule 3: Handle new patients\nIf `patient_lookup` returns `found=false`:\n- Collect: family name, given name, birthDate, phone number\n- Use `patient_create_or_update` to register them\n- Then proceed with their request\n\n\n### Rule 4: Appointment cancellation flow\n1. Use `patient_lookup` - this returns `upcomingAppointment` if they have one\n2. Confirm which appointment to cancel\n3. Use `cancel_appointment` with the `appointmentId`\n4. Ask if they want to reschedule\n\n\n---\n\n\n## Tools Reference\n\n\n### `patient_lookup`\n- **Method:** GET /patients/lookup\n- **Parameters:** name (string), birthDate (YYYY-MM-DD), phone (optional)\n- **When:** ALWAYS use after collecting name + DOB, before any other action\n- **Response:** found (boolean), patientId, patientName, upcomingAppointment\n\n\n### `patient_create_or_update`\n- **Method:** POST /patients\n- **Body:** family (required), given (required), birthDate (required), phone (required), email, gender\n- **When:** Registering new patient (after patient_lookup returns found=false)\n\n\n### `get_available_slots`\n- **Method:** GET /appointments/slots\n- **Parameters:** date (required, YYYY-MM-DD), urgency (routine/urgent), practitionerId, limit\n- **When:** Ready to book appointment (after patient_lookup)\n- **Behavior:** Offer 2-3 time options to patient\n\n\n### `book_appointment`\n- **Method:** POST /appointments\n- **Body:** slotId (required), patientId (required), type (routine/urgent), reason\n- **When:** Patient selects a slot\n- **Rule:** Always confirm details before AND after booking\n\n\n### `cancel_appointment`\n- **Method:** POST /appointments/cancel/{appointmentId}\n- **Body:** reason (optional)\n- **When:** Patient wants to cancel (appointmentId from patient_lookup result)\n- **After:** Always offer to reschedule\n\n\n### `add_to_urgent_queue`\n- **Method:** POST /queue/urgent\n- **Body:** patientId (required), reason, phone\n- **When:** Urgent case but no same-day slots available\n\n\n### `register_emergency_transfer`\n- **Method:** POST /queue/emergency\n- **Body:** patientId, phone, reason\n- **When:** Emergency keyword detected - call IMMEDIATELY, before responding\n\n\n### `request_callback`\n- **Method:** POST /callback\n- **Body:** phone (required), reason (required), category (required), patientId, patientName\n- **Categories:** prescription, billing, test_results, insurance, technical_issue, general\n- **When:** Out-of-scope requests or tool failures\n- **Rule:** Use patient_lookup FIRST if patient gave name/DOB\n\n\n### `get_intake_questions`\n- **Method:** GET /appointments/intake-questions\n- **Parameters:** reason (string), type (routine/urgent/followup), patientId (optional)\n- **When:** AFTER successfully booking an appointment\n- **Response:** List of questions to ask the patient\n- **Flow:**\n1. Call with the appointment reason and type\n2. For each question in the response, ask the patient\n3. Use the appropriate language (question for German, question_en for English)\n4. Note their answers for the medical record\n\n\n**Example conversation after booking:**\n- Agent: \"Bevor wir abschließen, habe ich noch ein paar kurze Fragen für den Arzt.\"\n- Agent: [Ask first question from get_intake_questions response]\n- Patient: [Answers]\n- Agent: [Ask next question]\n- Continue until all required questions are answered\n\n\n---\n\n\n## Character Normalization\n\n\n**Dates:**\n- \"March 15, 1985\" → \"1985-03-15\"\n- \"15. März 1985\" → \"1985-03-15\"\n- \"fünfzehnter März neunzehnhundertfünfundachtzig\" → \"1985-03-15\"\n\n\n**Phone:**\n- \"zero one seven six...\" → \"+49176...\"\n- \"null eins sieben sechs...\" → \"+49176...\"\n\n\n---\n\n\n## Error Handling\n\n\nIf any tool fails:\n1. Say: \"Einen Moment bitte, ich versuche es nochmal.\" / \"One moment please, let me try again.\"\n2. Retry the tool once\n3. If still failing: Use `request_callback` with category: technical_issue\n4. Say: \"Es tut mir leid, ich habe ein technisches Problem. Unsere Mitarbeiter werden Sie zurückrufen.\"\n\n\n---\n\n\n## Confirmation Scripts\n\n\n**Before booking:**\n- EN: \"Let me confirm: [Name], appointment on [Date] at [Time] for [Reason]. Is that correct?\"\n- DE: \"Lassen Sie mich bestätigen: [Name], Termin am [Datum] um [Uhrzeit] für [Grund]. Ist das korrekt?\"\n\n\n**After booking:**\n- EN: \"Your appointment is confirmed. We'll see you on [Date] at [Time].\"\n- DE: \"Ihr Termin ist bestätigt. Wir sehen uns am [Datum] um [Uhrzeit].\"\n\n\n**For cancellation:**\n- EN: \"I've cancelled your appointment on [Date]. Would you like to reschedule?\"\n- DE: \"Ich habe Ihren Termin am [Datum] abgesagt. Möchten Sie einen neuen Termin vereinbaren?\"\n\n\n---\n\n\n## Closing\n\n\n- English: \"Thank you for calling Ignis Demo Praxis. Take care!\"\n- German: \"Vielen Dank für Ihren Anruf bei Ignis Demo Praxis. Auf Wiederhören!\"\n",
+        "llm": "gemini-2.5-flash",
+        "reasoning_effort": null,
+        "thinking_budget": 0,
+        "temperature": 0,
+        "max_tokens": -1,
+        "tool_ids": [
+          "tool_3901kgaq8gfve1490efb7hyqbe38",
+          "tool_8501kgaq8vg5f4ztmrsx08sbz4f0",
+          "tool_7801kgaq970vfw0r9qedctk48r1a",
+          "tool_5501kgaq9n5jewz8jwmr7xge7htb",
+          "tool_8101kgaqa2hdeamsy5qhxx8vj0xw",
+          "tool_5601kgaqaf8deze8d8gn3k4ved2r",
+          "tool_1201kgaqbb12fpw86hjgm4a33z3h",
+          "tool_9301kgaqcf4bfx9s5ze0bvjwepxk",
+          "tool_3101kgcagcs5evbaaq72kqyy7cah"
+        ],
+        "built_in_tools": {
+          "end_call": null,
+          "language_detection": {
+            "type": "system",
+            "name": "language_detection",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "params": {
+              "system_tool_type": "language_detection"
+            }
+          },
+          "transfer_to_agent": null,
+          "transfer_to_number": null,
+          "skip_turn": null,
+          "play_keypad_touch_tone": null,
+          "voicemail_detection": null
+        },
+        "enable_parallel_tool_calls": false,
+        "mcp_server_ids": [],
+        "native_mcp_server_ids": [],
+        "knowledge_base": [],
+        "custom_llm": null,
+        "ignore_default_personality": false,
+        "rag": {
+          "enabled": false,
+          "embedding_model": "e5_mistral_7b_instruct",
+          "max_vector_distance": 0.6,
+          "max_documents_length": 50000,
+          "max_retrieved_rag_chunks_count": 20,
+          "query_rewrite_prompt_override": null
+        },
+        "timezone": "Europe/Berlin",
+        "backup_llm_config": {
+          "preference": "default"
+        },
+        "cascade_timeout_seconds": 8,
+        "tools": [
+          {
+            "type": "webhook",
+            "name": "patient_lookup",
+            "description": "Find a returning patient by phone and/or date of birth. Used after caller provides phone or DOB to check if they are in our system.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/patients/lookup",
+              "method": "GET",
+              "path_params_schema": {},
+              "query_params_schema": {
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "description": "Phone number (E.164 or national format)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "birthDate": {
+                    "type": "string",
+                    "description": "Date of birth in YYYY-MM-DD format",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Patient name (first or last)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                },
+                "required": []
+              },
+              "request_body_schema": null,
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "patient_create_or_update",
+            "description": "Create a new patient or update existing one with intake data. Use for new patients after collecting required fields, or returning patients after confirming data.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/patients",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "family",
+                  "given",
+                  "birthDate",
+                  "phone"
+                ],
+                "description": "Patient data to create or update",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "If present, update existing patient; else create new",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "family": {
+                    "type": "string",
+                    "description": "Family name (Nachname)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "given": {
+                    "type": "string",
+                    "description": "Given name (Vorname)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "birthDate": {
+                    "type": "string",
+                    "description": "Date of birth in YYYY-MM-DD format",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Primary phone number",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "Email address",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "gender": {
+                    "type": "string",
+                    "description": "One of: male, female, other, unknown",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_available_slots",
+            "description": "Return bookable appointment slots for a given date. Use when patient is ready to book an appointment.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/appointments/slots",
+              "method": "GET",
+              "path_params_schema": {},
+              "query_params_schema": {
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "description": "Date to check in YYYY-MM-DD format",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "practitionerId": {
+                    "type": "string",
+                    "description": "Specific doctor ID (omit for any available)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Max slots to return (default 10)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "urgency": {
+                    "type": "string",
+                    "description": "routine or urgent (urgent = same-day only)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                },
+                "required": [
+                  "date"
+                ]
+              },
+              "request_body_schema": null,
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "book_appointment",
+            "description": "Create an appointment for a chosen slot and patient. Use after patient has selected a time from available slots.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/appointments",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "slotId",
+                  "patientId"
+                ],
+                "description": "book appointments for a patient",
+                "properties": {
+                  "slotId": {
+                    "type": "string",
+                    "description": "Slot ID from get_available_slots",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "FHIR Patient ID",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "practitionerId": {
+                    "type": "string",
+                    "description": "Doctor ID if specific",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "\"routine\" or \"urgent\"",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Reason for appointment (e.g., Impfung, Vorsorge)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "add_to_urgent_queue",
+            "description": "Add patient to urgent callback queue",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/queue/urgent",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "patientId"
+                ],
+                "description": "book appointments for a patient",
+                "properties": {
+                  "patientId": {
+                    "type": "string",
+                    "description": "FHIR Patient ID",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Brief reason (e.g., post-op bleeding)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Callback number",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "register_emergency_transfer",
+            "description": "Record emergency detection before transferring to human agent. Call this immediately when emergency is detected, then perform transfer",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/queue/emergency",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [],
+                "description": "Emergency transfer registration data",
+                "properties": {
+                  "patientId": {
+                    "type": "string",
+                    "description": "FHIR Patient ID if known",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Caller phone number",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Emergency reason or keyword detected (e.g., Brustschmerzen, chest pain)\",",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "cancel_appointment",
+            "description": "Cancel an existing appointment. Use when patient wants to cancel.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/appointments/cancel/{appointmentId}",
+              "method": "POST",
+              "path_params_schema": {
+                "appointmentId": {
+                  "type": "string",
+                  "description": "Appointment ID to cancel",
+                  "enum": null,
+                  "is_system_provided": false,
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                }
+              },
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [],
+                "description": "Cancellation details",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Reason for cancellation (optional)",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "request_callback",
+            "description": "Schedule a staff callback for requests that require human handling - prescription refills, billing questions, test results, insurance inquiries, or when technical issues prevent completing the request.",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/callback",
+              "method": "POST",
+              "path_params_schema": {},
+              "query_params_schema": null,
+              "request_body_schema": {
+                "type": "object",
+                "required": [
+                  "patientName"
+                ],
+                "description": "Callback request details",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "description": "Phone number to call back",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Brief description of why callback is needed",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "One of: prescription, billing, test_results, insurance, technical_issue, general",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "FHIR Patient ID if known from patient_lookup",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "patientName": {
+                    "type": "string",
+                    "description": "Patient name for reference",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                }
+              },
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "get_intake_questions",
+            "description": "Get follow-up intake questions to ask the patient after booking an appointment. Call this after successfully booking to get relevant questions based on the appointment type and reason",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": "typing",
+            "tool_call_sound_behavior": "auto",
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            },
+            "execution_mode": "immediate",
+            "api_schema": {
+              "request_headers": {},
+              "url": "https://ignis.cognovis.de/api/appointments/intake-questions",
+              "method": "GET",
+              "path_params_schema": {},
+              "query_params_schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "The reason for the appointment (e.g., \"Impfung\", \"Vorsorge\", \"Rückenschmerzen\")",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Appointment type: routine, urgent, or followup",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "Patient ID for personalized questions",
+                    "enum": null,
+                    "is_system_provided": false,
+                    "dynamic_variable": "",
+                    "constant_value": ""
+                  }
+                },
+                "required": [
+                  "reason",
+                  "type",
+                  "patientId"
+                ]
+              },
+              "request_body_schema": null,
+              "content_type": "application/json",
+              "auth_connection": null
+            }
+          },
+          {
+            "type": "system",
+            "name": "language_detection",
+            "description": "",
+            "response_timeout_secs": 20,
+            "disable_interruptions": false,
+            "force_pre_tool_speech": false,
+            "assignments": [],
+            "tool_call_sound": null,
+            "tool_call_sound_behavior": "auto",
+            "params": {
+              "system_tool_type": "language_detection"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "created_at_unix_secs": 1769886300,
+    "updated_at_unix_secs": 1769940374
+  },
+  "platform_settings": {
+    "evaluation": {
+      "criteria": []
+    },
+    "widget": {
+      "variant": "full",
+      "placement": "bottom-right",
+      "expandable": "never",
+      "avatar": {
+        "type": "orb",
+        "color_1": "#2792dc",
+        "color_2": "#9ce6e6"
+      },
+      "feedback_mode": "during",
+      "end_feedback": {
+        "type": "rating"
+      },
+      "bg_color": "#ffffff",
+      "text_color": "#000000",
+      "btn_color": "#000000",
+      "btn_text_color": "#ffffff",
+      "border_color": "#e1e1e1",
+      "focus_color": "#000000",
+      "border_radius": null,
+      "btn_radius": null,
+      "action_text": null,
+      "start_call_text": null,
+      "end_call_text": null,
+      "expand_text": null,
+      "listening_text": null,
+      "speaking_text": null,
+      "shareable_page_text": null,
+      "shareable_page_show_terms": true,
+      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+      "terms_key": null,
+      "show_avatar_when_collapsed": false,
+      "disable_banner": false,
+      "override_link": null,
+      "markdown_link_allowed_hosts": [],
+      "markdown_link_include_www": true,
+      "markdown_link_allow_http": true,
+      "mic_muting_enabled": false,
+      "transcript_enabled": false,
+      "text_input_enabled": true,
+      "conversation_mode_toggle_enabled": false,
+      "default_expanded": false,
+      "always_expanded": false,
+      "text_contents": {
+        "main_label": null,
+        "start_call": null,
+        "start_chat": null,
+        "new_call": null,
+        "end_call": null,
+        "mute_microphone": null,
+        "change_language": null,
+        "collapse": null,
+        "expand": null,
+        "copied": null,
+        "accept_terms": null,
+        "dismiss_terms": null,
+        "listening_status": null,
+        "speaking_status": null,
+        "connecting_status": null,
+        "chatting_status": null,
+        "input_label": null,
+        "input_placeholder": null,
+        "input_placeholder_text_only": null,
+        "input_placeholder_new_conversation": null,
+        "user_ended_conversation": null,
+        "agent_ended_conversation": null,
+        "conversation_id": null,
+        "error_occurred": null,
+        "copy_id": null,
+        "initiate_feedback": null,
+        "request_follow_up_feedback": null,
+        "thanks_for_feedback": null,
+        "thanks_for_feedback_details": null,
+        "follow_up_feedback_placeholder": null,
+        "submit": null,
+        "go_back": null
+      },
+      "styles": {
+        "base": null,
+        "base_hover": null,
+        "base_active": null,
+        "base_border": null,
+        "base_subtle": null,
+        "base_primary": null,
+        "base_error": null,
+        "accent": null,
+        "accent_hover": null,
+        "accent_active": null,
+        "accent_border": null,
+        "accent_subtle": null,
+        "accent_primary": null,
+        "overlay_padding": null,
+        "button_radius": null,
+        "input_radius": null,
+        "bubble_radius": null,
+        "sheet_radius": null,
+        "compact_sheet_radius": null,
+        "dropdown_sheet_radius": null
+      },
+      "language_selector": false,
+      "supports_text_only": true,
+      "custom_avatar_path": null,
+      "language_presets": {}
+    },
+    "data_collection": {},
+    "overrides": {
+      "conversation_config_override": {
+        "turn": {
+          "soft_timeout_config": {
+            "message": false
+          }
+        },
+        "tts": {
+          "voice_id": false,
+          "stability": false,
+          "speed": false,
+          "similarity_boost": false
+        },
+        "conversation": {
+          "text_only": true
+        },
+        "agent": {
+          "first_message": false,
+          "language": true,
+          "prompt": {
+            "prompt": false,
+            "llm": false,
+            "native_mcp_server_ids": false
+          }
+        }
+      },
+      "custom_llm_extra_body": false,
+      "enable_conversation_initiation_client_data_from_webhook": false
+    },
+    "workspace_overrides": {
+      "conversation_initiation_client_data_webhook": null,
+      "webhooks": {
+        "post_call_webhook_id": null,
+        "events": [
+          "transcript"
+        ],
+        "send_audio": false
+      }
+    },
+    "testing": {
+      "attached_tests": [],
+      "referenced_tests_ids": []
+    },
+    "archived": false,
+    "guardrails": {
+      "version": "1",
+      "alignment": {
+        "is_enabled": false
+      },
+      "moderation": {
+        "config": {
+          "sexual": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "violence": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "violence_graphic": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "harassment": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "harassment_threatening": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "hate": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "hate_threatening": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "self_harm_instructions": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "self_harm": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "self_harm_intent": {
+            "is_enabled": false,
+            "threshold": 0.3
+          },
+          "sexual_minors": {
+            "is_enabled": false,
+            "threshold": 0.3
+          }
+        }
+      }
+    },
+    "auth": {
+      "enable_auth": false,
+      "allowlist": [],
+      "shareable_token": null
+    },
+    "call_limits": {
+      "agent_concurrency_limit": -1,
+      "daily_limit": 100000,
+      "bursting_enabled": true
+    },
+    "ban": null,
+    "privacy": {
+      "record_voice": true,
+      "retention_days": -1,
+      "delete_transcript_and_pii": false,
+      "delete_audio": false,
+      "apply_to_existing_conversations": false,
+      "zero_retention_mode": false
+    },
+    "safety": {
+      "is_blocked_ivc": false,
+      "is_blocked_non_ivc": false,
+      "ignore_safety_evaluation": false
+    }
+  },
+  "phone_numbers": [
+    {
+      "phone_number": "+15722314881",
+      "label": "SVe",
+      "supports_inbound": true,
+      "supports_outbound": true,
+      "phone_number_id": "phnum_3201kgc9w417fyq983pz7e5n7nah",
+      "assigned_agent": {
+        "agent_id": "agent_8101kgaq3e85ecqay2ctsjgp0y2e",
+        "agent_name": "Ignis Demo Praxis"
+      },
+      "provider": "twilio"
+    }
+  ],
+  "whatsapp_accounts": [],
+  "workflow": {
+    "edges": {},
+    "nodes": {
+      "start_node": {
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "edge_order": []
+      }
+    },
+    "prevent_subagent_loops": false
+  },
+  "access_info": {
+    "is_creator": true,
+    "creator_name": "sven@itdevcon.com",
+    "creator_email": "sven@itdevcon.com",
+    "role": "admin"
+  },
+  "tags": [],
+  "version_id": "agtvrsn_4801kgcann02f9mawjg1qc5xm98b",
+  "branch_id": "agtbrch_1901kgaq3ey7e339qe8g3phz64r7",
+  "main_branch_id": "agtbrch_1901kgaq3ey7e339qe8g3phz64r7",
+  "procedure_versions": [],
+  "procedures_enabled": false
+}

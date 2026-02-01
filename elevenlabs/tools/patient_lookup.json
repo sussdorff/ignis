@@ -1,0 +1,53 @@
+{
+  "type": "webhook",
+  "name": "patient_lookup",
+  "description": "Find a returning patient by phone and/or date of birth. Used after caller provides phone or DOB to check if they are in our system.",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/patients/lookup",
+    "method": "GET",
+    "path_params_schema": {},
+    "query_params_schema": {
+      "properties": {
+        "phone": {
+          "type": "string",
+          "description": "Phone number (E.164 or national format)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "birthDate": {
+          "type": "string",
+          "description": "Date of birth in YYYY-MM-DD format",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Patient name (first or last)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      },
+      "required": []
+    },
+    "request_body_schema": null,
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}

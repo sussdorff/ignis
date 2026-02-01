@@ -1,0 +1,92 @@
+{
+  "type": "webhook",
+  "name": "patient_create_or_update",
+  "description": "Create a new patient or update existing one with intake data. Use for new patients after collecting required fields, or returning patients after confirming data.",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/patients",
+    "method": "POST",
+    "path_params_schema": {},
+    "query_params_schema": null,
+    "request_body_schema": {
+      "type": "object",
+      "required": [
+        "family",
+        "given",
+        "birthDate",
+        "phone"
+      ],
+      "description": "Patient data to create or update",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "If present, update existing patient; else create new",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "family": {
+          "type": "string",
+          "description": "Family name (Nachname)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "given": {
+          "type": "string",
+          "description": "Given name (Vorname)",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "birthDate": {
+          "type": "string",
+          "description": "Date of birth in YYYY-MM-DD format",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "phone": {
+          "type": "string",
+          "description": "Primary phone number",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "gender": {
+          "type": "string",
+          "description": "One of: male, female, other, unknown",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      }
+    },
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}

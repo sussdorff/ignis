@@ -1,0 +1,73 @@
+{
+  "type": "webhook",
+  "name": "request_callback",
+  "description": "Schedule a staff callback for requests that require human handling - prescription refills, billing questions, test results, insurance inquiries, or when technical issues prevent completing the request.",
+  "response_timeout_secs": 20,
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "assignments": [],
+  "tool_call_sound": "typing",
+  "tool_call_sound_behavior": "auto",
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "execution_mode": "immediate",
+  "api_schema": {
+    "request_headers": {},
+    "url": "https://ignis.cognovis.de/api/callback",
+    "method": "POST",
+    "path_params_schema": {},
+    "query_params_schema": null,
+    "request_body_schema": {
+      "type": "object",
+      "required": [
+        "patientName"
+      ],
+      "description": "Callback request details",
+      "properties": {
+        "phone": {
+          "type": "string",
+          "description": "Phone number to call back",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "reason": {
+          "type": "string",
+          "description": "Brief description of why callback is needed",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "category": {
+          "type": "string",
+          "description": "One of: prescription, billing, test_results, insurance, technical_issue, general",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "patientId": {
+          "type": "string",
+          "description": "FHIR Patient ID if known from patient_lookup",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        "patientName": {
+          "type": "string",
+          "description": "Patient name for reference",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      }
+    },
+    "content_type": "application/json",
+    "auth_connection": null
+  }
+}
