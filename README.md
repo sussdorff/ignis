@@ -36,13 +36,13 @@ An AI voice agent that:
 
 ## Architecture
 
-**Hybrid approach:** ElevenLabs handles real-time voice conversation, OpenClaw manages background tasks and smart notifications.
+**Hybrid approach:** ElevenLabs handles real-time voice conversation via Twilio, OpenClaw manages background tasks and smart notifications. Next.js frontend runs as separate service from Bun API backend.
 
 ```mermaid
 flowchart TB
     subgraph PatientInterface [Patient Interface]
         Phone[Phone Call]
-        WebPortal[Patient Portal]
+        WebPortal[Next.js Patient Portal]
     end
     
     subgraph VoiceLayer [Voice Layer - Real-time]
@@ -50,9 +50,11 @@ flowchart TB
         Twilio[Twilio Phone Integration]
     end
     
-    subgraph Backend [Backend Services]
-        BunAPI[Bun + Hono API]
-        Aidbox[Aidbox FHIR Server]
+    subgraph Backend [Backend Services - Docker]
+        NextJS[Next.js Frontend :3000]
+        BunAPI[Bun + Hono API :3001]
+        Aidbox[Aidbox FHIR Server :8080]
+        Nginx[Nginx Reverse Proxy]
     end
     
     subgraph Background [Background Orchestration]
@@ -66,10 +68,12 @@ flowchart TB
         StaffAlerts[Staff Alerts via WhatsApp]
     end
     
-    Phone --> ElevenLabs
+    Phone --> Twilio
+    Twilio --> ElevenLabs
     ElevenLabs -->|"Tools (real-time)"| BunAPI
     ElevenLabs -->|"Post-call webhook"| OpenClaw
-    WebPortal --> BunAPI
+    WebPortal --> NextJS
+    NextJS --> BunAPI
     BunAPI --> Aidbox
     OpenClaw --> Gemini
     OpenClaw --> Aidbox
@@ -77,6 +81,9 @@ flowchart TB
     OpenClaw --> StaffAlerts
     Aidbox --> Dashboard
     Aidbox --> Calendar
+    Nginx --> NextJS
+    Nginx --> BunAPI
+    Nginx --> Aidbox
 ```
 
 ### Component Roles
@@ -84,54 +91,80 @@ flowchart TB
 | Component | Role | When |
 |-----------|------|------|
 | **ElevenLabs** | Voice conversation, triage, patient lookup, booking | During call (real-time) |
-| **Bun + Hono API** | HTTP endpoints for ElevenLabs tools, web UIs | During call + web access |
-| **Aidbox** | FHIR data storage (patients, appointments) | Always |
+| **Twilio** | Phone infrastructure, media streaming | During call |
+| **Next.js Frontend** | Patient portal, praxis dashboard UI | Web access |
+| **Bun + Hono API** | HTTP endpoints for ElevenLabs tools, frontend APIs | During call + web access |
+| **Aidbox** | FHIR data storage (patients, appointments, questionnaires) | Always |
 | **OpenClaw** | SMS notifications, staff alerts, call analysis, follow-ups | After call (background) |
 | **Gemini** | Intent classification, confidence scoring | Called by OpenClaw |
+| **Nginx** | Reverse proxy, SSL termination, routing | Always |
 
 ## Tech Stack
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| Frontend | Vite + React + TypeScript + Tailwind + shadcn/ui | Praxis dashboard + Patient portal |
-| Backend | Bun + Hono | Real-time APIs for ElevenLabs tools |
-| FHIR Server | Aidbox Cloud Sandbox | Patient/appointment data storage |
-| Voice AI | 11 Labs Conversational AI | Phone conversation handling |
-| Phone | Twilio (via 11 Labs) | Inbound/outbound calls |
+| Frontend | Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui | Praxis dashboard + Patient portal |
+| Backend | Bun + Hono | Real-time APIs for ElevenLabs tools + frontend |
+| FHIR Server | Aidbox (Docker) | Patient/appointment/questionnaire data storage |
+| Voice AI | ElevenLabs Conversational AI | Phone conversation handling |
+| Phone | Twilio | Inbound/outbound calls, media streaming |
 | Background Agent | OpenClaw | Post-call tasks, notifications, follow-ups |
 | NLU | Gemini | Intent classification, confidence scoring |
+| Reverse Proxy | Nginx (Docker) | SSL termination, routing |
+| Database | PostgreSQL 16 (Docker) | Aidbox FHIR storage |
 
 ## Project Status
 
-✅ **Completed** (Foundation + Backend API — ~50%)
-- ✅ Backend scaffold (Bun + Hono) with health check endpoint
-- ✅ Frontend scaffold (Vite + React + TypeScript)
-- ✅ Tailwind CSS v4 integration
-- ✅ shadcn/ui components (button, card, input, form, calendar, label)
-- ✅ Path aliases configured (@/* → src/*)
-- ✅ Docker-based deployment (app, Aidbox, nginx)
+**Overall Progress: ~65% Complete**
+
+✅ **Completed** (Backend + Infrastructure + Core Frontend — ~65%)
+
+**Backend (95% Complete):**
+- ✅ Bun + Hono API with full routing
+- ✅ FHIR client and Aidbox integration
+- ✅ **Patients API**: lookup (phone/DOB/name), create, update - Aidbox-backed
+- ✅ **Appointments API**: slots (with urgency filter), book, cancel - Aidbox-backed
+- ✅ **Queue API**: urgent queue, emergency queue - Aidbox Task-backed
+- ✅ **Callback API**: request callback - Aidbox Task-backed
+- ✅ **Questionnaires API**: list, search, get by ID, patient-intake endpoint
+- ✅ **Auth API**: JWT authentication with doctor/patient roles, token management
+- ✅ **Chat API**: real-time chat sessions with AI
+- ✅ **Voice API**: Twilio integration for phone calls, WebSocket media streaming
+- ✅ **Doctor API**: patient management, medication requests
+- ✅ OpenAPI spec (GET /api/openapi.json) and CORS for ElevenLabs tools
+- ✅ Comprehensive test suite (10 test files covering all major routes)
+
+**Infrastructure (95% Complete):**
+- ✅ Docker-based deployment (nginx, frontend, api, aidbox, aidbox-db)
+- ✅ Multi-container orchestration with health checks
 - ✅ Automated deployment scripts (setup-remote.sh, update-server.sh)
-- ✅ Nginx reverse proxy routing (/app, /api, /fhir)
-- ✅ FHIR client and Aidbox integration (config, fhir-client, aidbox-patients, aidbox-appointments)
-- ✅ Real API for patients (lookup by phone/DOB/name, create/update) backed by Aidbox
-- ✅ Patient lookup with returning patient pre-fill (patientId, patientName, upcomingAppointment)
-- ✅ Appointments API: slots (with urgency filter), book, cancel — cancel backed by Aidbox
-- ✅ Queue API stubs: POST /api/queue/urgent, POST /api/queue/emergency
-- ✅ Callback API stub: POST /api/callback
-- ✅ OpenAPI spec (GET /api/openapi.json) and CORS for ElevenLabs voice tools
+- ✅ Nginx reverse proxy with SSL support
+- ✅ PostgreSQL 16 for Aidbox FHIR storage
 
-🚧 **In Progress** (Next Steps)
-- 🔄 UI pages (Praxis dashboard, Patient portal) — page scaffolds exist; wiring to API in progress
-- 🔄 ElevenLabs voice integration (German conversation flow using backend APIs)
+**Frontend (70% Complete):**
+- ✅ Next.js 15 App Router + TypeScript
+- ✅ Tailwind CSS v4 + shadcn/ui component library
+- ✅ Dashboard pages: Fragebogen, Termine, Wartezimmer, Patient details
+- ✅ Chat interface with AI integration
+- ✅ Calendar views (day/week)
+- ✅ Questionnaire forms and progress tracking
+- 🔄 Frontend-backend API wiring (partially complete)
 
-🔴 **Not Started** (Remaining Core Features — ~45%)
-- ❌ 3-tier triage logic in voice flow (API stubs exist; agent flow not wired)
-- ❌ Emergency detection (always-on interrupt during call)
-- ❌ Patient verification portal (token-based secure access)
-- ❌ AI flagging system (uncertain fields for doctor review)
-- ❌ OpenClaw background tasks (SMS, WhatsApp, call analysis)
-- ❌ German seed data (Ärzte, schedules, sample patients — demo bundle exists)
-- ❌ Pitch deck and demo preparation
+**Voice Integration (40% Complete):**
+- ✅ Twilio integration (routes, client, WebSocket)
+- 🔄 ElevenLabs integration (client exists, agent flow incomplete)
+
+🔴 **Not Started** (Critical Missing Features — ~35%)
+
+**High Priority (P1):**
+- ❌ **Patient Verification Portal** ([ig-i1u](bd://ig-i1u)) - Token-based secure access for patient data review
+- ❌ **AI Flags System** ([ig-96p](bd://ig-96p)) - Confidence scoring and doctor review interface
+- ❌ **Emergency Detection** ([ig-f1z](bd://ig-f1z)) - Always-on interrupt during calls (safety-critical)
+- ❌ **ElevenLabs Voice Flow** ([ig-pfb](bd://ig-pfb)) - Complete 3-tier triage integration
+- ❌ **Demo Materials** ([ig-6m1](bd://ig-6m1)) - Pitch deck, script, German seed data
+
+**Medium Priority (P2):**
+- ❌ **OpenClaw Background Tasks** ([ig-mnm](bd://ig-mnm)) - Post-call automation (SMS, WhatsApp, call analysis)
 
 📋 **Full Plan**: See [docs/PLAN.md](docs/PLAN.md)
 
@@ -223,6 +256,42 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 | `GET` | `/api/questionnaires` | List/search questionnaires (`name?`, `status?`, `title?`) | ✅ Aidbox |
 | `GET` | `/api/questionnaires/patient-intake` | Get the patient intake questionnaire | ✅ Aidbox |
 | `GET` | `/api/questionnaires/:id` | Get questionnaire by ID | ✅ Aidbox |
+
+### Auth (`/api/auth`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `POST` | `/api/auth/identify` | Level 1: Identify patient by phone/DOB | ✅ JWT |
+| `POST` | `/api/auth/authenticate` | Level 2: Authenticate patient (voice match) | ✅ JWT |
+| `POST` | `/api/auth/authorize` | Level 3: Authorize action (multi-factor) | ✅ JWT |
+| `POST` | `/api/auth/verify-token` | Verify JWT token | ✅ JWT |
+| `POST` | `/api/auth/refresh` | Refresh JWT token | ✅ JWT |
+
+### Chat (`/api/chat`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `POST` | `/api/chat/start` | Start new chat session | ✅ Memory |
+| `POST` | `/api/chat/message` | Send message to AI | ✅ AI |
+| `GET` | `/api/chat/:sessionId` | Get chat session history | ✅ Memory |
+
+### Doctor (`/api/doctor`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `GET` | `/api/doctor/patients` | List all patients | ✅ Aidbox |
+| `GET` | `/api/doctor/patient/:id` | Get patient details | ✅ Aidbox |
+| `GET` | `/api/doctor/patient/:id/appointments` | Get patient appointments | ✅ Aidbox |
+| `POST` | `/api/doctor/patient/:id/prescribe` | Create medication request | ✅ Aidbox |
+
+### Voice (`/api/voice`)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `POST` | `/api/voice/sessions/start` | Start voice session | ✅ ElevenLabs |
+| `POST` | `/api/voice/sessions/:id/end` | End voice session | ✅ ElevenLabs |
+| `POST` | `/api/voice/sessions/:id/transfer` | Transfer to human agent | ✅ ElevenLabs |
+| `GET` | `/api/voice/agents` | List available agents | ✅ ElevenLabs |
 
 ### Twilio Integration (`/api/twilio`)
 
@@ -367,20 +436,24 @@ All services run in Docker and are proxied through nginx.
 
 ### Service Architecture
 
-The **Ignis App** runs as a single Docker container that includes both:
-- **Backend**: Bun + Hono server (port 3000)
-  - Handles `/api/*` routes
-  - Serves built frontend static files
-- **Frontend**: React app (built as static files)
-  - Built during Docker image creation
-  - Served by the Bun backend
+The deployment uses **separate containers** orchestrated via Docker Compose:
+
+- **frontend**: Next.js 15 app (port 3000)
+- **api**: Bun + Hono backend (port 3001)
+- **aidbox**: FHIR server (port 8080)
+- **aidbox-db**: PostgreSQL 16 database
+- **nginx**: Reverse proxy (ports 80, 443)
 
 ```
-Docker Container "app"
-├── Bun Backend (Hono) - port 3000
-│   ├── Handles /api routes
-│   └── Serves built frontend static files
-└── Frontend (React) - built as static files in /frontend/dist/
+Docker Network
+├── nginx (ports 80, 443) → routes traffic
+│   ├── /app/* → frontend:3000
+│   ├── /api/* → api:3001
+│   └── /fhir/* → aidbox:8080
+├── frontend (Next.js) → port 3000
+├── api (Bun + Hono) → port 3001 → aidbox:8080
+├── aidbox (FHIR) → port 8080 → aidbox-db:5432
+└── aidbox-db (PostgreSQL 16) → port 5432
 ```
 
 ### Managing Services

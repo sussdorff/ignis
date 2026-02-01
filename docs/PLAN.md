@@ -5,27 +5,80 @@
 
 ## Todos
 
-- [ ] Initialize Bun project with Hono API and Vite React frontend with Tailwind and shadcn/ui
-- [ ] Create Aidbox sandbox instance and configure FHIR resources (Patient, Appointment, Practitioner, Schedule)
-- [ ] Set up 11 Labs Conversational AI agent with patient intake conversation flow (German language primary)
-- [ ] Build Aidbox API client with Patient and Appointment CRUD operations
-- [ ] Implement patient lookup by phone/DOB with pre-fill for returning patients
-- [ ] Build 3-tier triage logic (Emergency->human transfer, Urgent->same-day queue, Regular->standard booking)
-- [ ] Implement always-on emergency detection that can interrupt conversation at any point and transfer to human
-- [ ] Build patient verification portal with secure token-based access for reviewing/editing AI-filled data
-- [ ] Implement AI flagging system for uncertain/important fields that doctor should verify during appointment
-- [ ] Create clinic dashboard with real-time patient queue, urgent queue, and appointment calendar
-- [ ] Build patient intake form and appointment booking interface
-- [ ] Connect 11 Labs voice agent to backend APIs via webhooks
-- [ ] Create realistic German demo seed data (Ärzte, schedules, sample patients)
-- [ ] Complete pitch deck with German/EU market focus, problem, solution, demo, and monetization
-- [ ] End-to-end demo rehearsal and backup video recording
+- [x] Initialize Bun project with Hono API and Next.js frontend with Tailwind and shadcn/ui
+- [x] Create Aidbox sandbox instance and configure FHIR resources (Patient, Appointment, Practitioner, Schedule)
+- [ ] Set up 11 Labs Conversational AI agent with patient intake conversation flow (German language primary) **[ig-pfb](bd://ig-pfb)**
+- [x] Build Aidbox API client with Patient and Appointment CRUD operations
+- [x] Implement patient lookup by phone/DOB with pre-fill for returning patients
+- [ ] Build 3-tier triage logic (Emergency->human transfer, Urgent->same-day queue, Regular->standard booking) **[ig-pfb](bd://ig-pfb)**
+- [ ] Implement always-on emergency detection that can interrupt conversation at any point and transfer to human **[ig-f1z](bd://ig-f1z)**
+- [ ] Build patient verification portal with secure token-based access for reviewing/editing AI-filled data **[ig-i1u](bd://ig-i1u)**
+- [ ] Implement AI flagging system for uncertain/important fields that doctor should verify during appointment **[ig-96p](bd://ig-96p)**
+- [x] Create clinic dashboard with real-time patient queue, urgent queue, and appointment calendar
+- [x] Build patient intake form and appointment booking interface
+- [ ] Connect 11 Labs voice agent to backend APIs via webhooks **[ig-pfb](bd://ig-pfb)**
+- [ ] Create realistic German demo seed data (Ärzte, schedules, sample patients) **[ig-6m1](bd://ig-6m1)**
+- [ ] Complete pitch deck with German/EU market focus, problem, solution, demo, and monetization **[ig-6m1](bd://ig-6m1)**
+- [ ] End-to-end demo rehearsal and backup video recording **[ig-6m1](bd://ig-6m1)**
+
+**Progress: ~65% Complete** | **Backend: 95%** | **Frontend: 70%** | **Voice: 40%** | **Demo: 5%**
 
 ---
 
 ## Architecture Overview
 
-**Hybrid Approach:** ElevenLabs handles real-time voice conversation during the call. OpenClaw manages background tasks after the call ends (SMS, notifications, analysis).
+**Hybrid Approach:** ElevenLabs handles real-time voice conversation during the call via Twilio. OpenClaw manages background tasks after the call ends (SMS, notifications, analysis). Next.js frontend runs as separate service from Bun API backend.
+
+**Current Implementation:** Next.js 15 (App Router) frontend + Bun + Hono backend + Aidbox FHIR + PostgreSQL, all in Docker containers with nginx reverse proxy.
+
+## Current Project Status (Updated: 2026-02-01)
+
+**Overall: ~65% Complete**
+
+### ✅ Completed Components
+
+**Backend API (95% Complete):**
+- ✅ Full REST API with 50+ endpoints
+- ✅ Patients: lookup (phone/DOB/name), create, update
+- ✅ Appointments: slots (urgency filter), book, cancel
+- ✅ Queue: urgent, emergency (Aidbox Task-backed)
+- ✅ Callback: request callback
+- ✅ Questionnaires: list, search, patient-intake endpoint
+- ✅ Auth: JWT with 3-tier patient authentication (identify, authenticate, authorize)
+- ✅ Chat: AI-powered chat sessions
+- ✅ Voice: Twilio integration with WebSocket media streaming
+- ✅ Doctor: patient management, medication requests
+- ✅ OpenAPI spec + CORS for ElevenLabs
+- ✅ Comprehensive test suite (10 test files)
+
+**Infrastructure (95% Complete):**
+- ✅ Docker multi-container setup (frontend, api, aidbox, db, nginx)
+- ✅ Automated deployment scripts
+- ✅ Health checks and service orchestration
+- ✅ Nginx reverse proxy with SSL support
+
+**Frontend (70% Complete):**
+- ✅ Next.js 15 App Router + TypeScript
+- ✅ Tailwind CSS v4 + shadcn/ui
+- ✅ Dashboard pages (Fragebogen, Termine, Wartezimmer, Patient details)
+- ✅ Chat interface
+- ✅ Calendar views
+- ✅ Questionnaire forms
+- 🔄 Some frontend-backend wiring incomplete
+
+### 🔴 Missing Critical Features
+
+**High Priority (P1):**
+- ❌ Patient Verification Portal ([ig-i1u](bd://ig-i1u))
+- ❌ AI Flags System ([ig-96p](bd://ig-96p))
+- ❌ Emergency Detection ([ig-f1z](bd://ig-f1z)) - Safety-critical
+- ❌ ElevenLabs Voice Flow ([ig-pfb](bd://ig-pfb))
+- ❌ Demo Materials ([ig-6m1](bd://ig-6m1))
+
+**Medium Priority (P2):**
+- ❌ OpenClaw Background Tasks ([ig-mnm](bd://ig-mnm))
+
+---
 
 ```mermaid
 flowchart TB
