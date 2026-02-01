@@ -101,3 +101,28 @@ export async function createQuestionnaireResponse(
   )
   return created
 }
+
+/** FHIR Bundle for search results */
+interface QuestionnaireResponseBundle {
+  resourceType: 'Bundle'
+  entry?: Array<{ resource?: FHIRQuestionnaireResponse }>
+}
+
+/**
+ * Get QuestionnaireResponse resources for a patient (ig-1nb).
+ * @param patientId - FHIR Patient ID (with or without "Patient/" prefix)
+ * @returns Array of QuestionnaireResponse resources, newest first
+ */
+export async function getQuestionnaireResponsesByPatient(
+  patientId: string
+): Promise<FHIRQuestionnaireResponse[]> {
+  const subjectRef = patientId.startsWith('Patient/')
+    ? patientId
+    : `Patient/${patientId}`
+  const query = `QuestionnaireResponse?subject=${encodeURIComponent(subjectRef)}&_sort=-authored&_count=100`
+  const bundle = (await fhirClient.get(query)) as QuestionnaireResponseBundle
+  const entries = bundle.entry ?? []
+  return entries
+    .map((e) => e.resource)
+    .filter((r): r is FHIRQuestionnaireResponse => r?.resourceType === 'QuestionnaireResponse')
+}

@@ -7,7 +7,10 @@ import {
   getActiveQuestionnaires,
   getPatientIntakeQuestionnaire,
 } from '../lib/aidbox-questionnaires'
-import { createQuestionnaireResponse } from '../lib/aidbox-questionnaire-responses'
+import {
+  createQuestionnaireResponse,
+  getQuestionnaireResponsesByPatient,
+} from '../lib/aidbox-questionnaire-responses'
 import {
   QuestionnaireResponseSubmitSchema,
   WrappedQuestionnaireResponseSchema,
@@ -78,6 +81,30 @@ function normalizeToInput(body: z.infer<typeof QuestionnaireResponseBodySchema>)
     author: body.author,
   }
 }
+
+// =============================================================================
+// GET /api/questionnaires/responses?patientId=xxx - fetch by patient (ig-1nb)
+// =============================================================================
+questionnaires.get('/responses', async (c) => {
+  const patientId = c.req.query('patientId')
+  if (!patientId || patientId.trim() === '') {
+    return c.json(
+      { error: 'validation_failed', message: 'patientId query parameter is required' },
+      400
+    )
+  }
+
+  try {
+    const responses = await getQuestionnaireResponsesByPatient(patientId)
+    return c.json({ responses }, 200)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('404') || message.includes('not found')) {
+      return c.json({ error: 'not_found', message }, 404)
+    }
+    throw err
+  }
+})
 
 questionnaires.post(
   '/responses',

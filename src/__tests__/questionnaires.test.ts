@@ -85,6 +85,46 @@ describe('Questionnaires API', () => {
     expect(sectionTexts).toContain('Einwilligung')
   })
 
+  describe('GET /api/questionnaires/responses?patientId=xxx (ig-1nb)', () => {
+    it('returns 400 when patientId is missing', async () => {
+      const res = await fetch(`${BASE}/api/questionnaires/responses`)
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe('validation_failed')
+      expect(data.message).toContain('patientId')
+    })
+
+    it('returns empty array when patient has no responses', async () => {
+      const res = await fetch(`${BASE}/api/questionnaires/responses?patientId=patient-999-nonexistent`)
+      expect(res.ok).toBe(true)
+      const data = await res.json()
+      expect(data.responses).toEqual([])
+    })
+
+    it('returns questionnaire responses for patient', async () => {
+      // Create a response for patient-1 first
+      const createRes = await fetch(`${BASE}/api/questionnaires/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: 'patient-1',
+          status: 'completed',
+          item: [{ linkId: 'visit-reason', answer: [{ valueString: 'GET-by-patient test' }] }],
+        }),
+      })
+      expect(createRes.status).toBe(201)
+
+      const res = await fetch(`${BASE}/api/questionnaires/responses?patientId=patient-1`)
+      expect(res.ok).toBe(true)
+      const data = (await res.json()) as { responses: Array<{ resourceType: string; subject?: { reference: string }; id?: string }> }
+      expect(Array.isArray(data.responses)).toBe(true)
+      expect(data.responses.length).toBeGreaterThan(0)
+      const qr = data.responses[0]
+      expect(qr.resourceType).toBe('QuestionnaireResponse')
+      expect(qr.subject?.reference).toBe('Patient/patient-1')
+    })
+  })
+
   describe('POST /api/questionnaires/responses', () => {
     it('stores API-friendly questionnaire response and returns 201', async () => {
       const body = {
