@@ -10,6 +10,8 @@ export interface FHIRAppointment {
   participant?: Array<{ actor?: { reference?: string; display?: string }; status?: string }>
   description?: string
   appointmentType?: { coding?: Array<{ system?: string; code?: string; display?: string }> }
+  /** FHIR R4: reference to Slot(s) so we can free the slot on cancel */
+  slot?: Array<{ reference?: string }>
   [key: string]: unknown
 }
 
@@ -70,7 +72,17 @@ export async function getAppointmentById(id: string): Promise<FHIRAppointment | 
 }
 
 /**
- * Cancel an appointment in Aidbox (set status to cancelled).
+ * Extract slot ID from a FHIR reference (e.g. "Slot/abc" -> "abc").
+ */
+function slotIdFromReference(ref: string | undefined): string | null {
+  if (!ref?.trim()) return null
+  const parts = ref.split('/')
+  const id = parts[parts.length - 1]
+  return id?.trim() || null
+}
+
+/**
+ * Cancel an appointment in Aidbox (set status to cancelled) and free the linked Slot if any.
  * Returns result: ok, not_found, or conflict (already_cancelled / in_the_past).
  */
 export async function cancelAppointment(appointmentId: string): Promise<CancelResult> {
@@ -85,6 +97,18 @@ export async function cancelAppointment(appointmentId: string): Promise<CancelRe
 
   const updated: FHIRAppointment = { ...appt, status: 'cancelled' }
   await fhirClient.put(`Appointment/${appointmentId}`, updated)
+
+  // Free the slot so it becomes bookable again (best-effort; don't fail cancel if slot update fails)
+  const slotRef = appt.slot?.[0]?.reference
+  const slotId = slotIdFromReference(slotRef)
+  if (slotId) {
+    try {
+      await updateSlotStatus(slotId, 'free')
+    } catch (err) {
+      console.error('[cancelAppointment] Failed to free slot', slotId, err)
+    }
+  }
+
   return { ok: true, appointmentId }
 }
 
@@ -112,6 +136,7 @@ export type CreateAppointmentResult =
 
 /**
  * Create an Appointment in Aidbox for the given slot and patient.
+ * Stores the slot reference on the Appointment so the slot can be freed on cancel.
  * Returns slot_unavailable if an appointment already exists in that time range.
  */
 export async function createAppointment(params: {
@@ -122,6 +147,8 @@ export async function createAppointment(params: {
   practitionerDisplay?: string
   type?: 'routine' | 'urgent'
   reason?: string
+  /** Slot ID to store on the Appointment (used to free the slot on cancel) */
+  slotId?: string
 }): Promise<CreateAppointmentResult> {
   const existing = await getAppointmentsInRange(params.start, params.end)
   if (existing.length > 0) return { ok: false, code: 'slot_unavailable' }
@@ -152,6 +179,9 @@ export async function createAppointment(params: {
         status: 'accepted',
       },
     ],
+  }
+  if (params.slotId) {
+    body.slot = [{ reference: `Slot/${params.slotId}` }]
   }
   const created = (await fhirClient.post('Appointment', body)) as FHIRAppointment
   return { ok: true, appointment: created }

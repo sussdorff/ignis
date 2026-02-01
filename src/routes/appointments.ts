@@ -117,6 +117,7 @@ appointments.post('/', async (c) => {
     practitionerDisplay: pracDisplay,
     type: type ?? 'routine',
     reason,
+    slotId,
   })
 
   if (result.ok === false && result.code === 'slot_unavailable') {

@@ -7,16 +7,24 @@ function todayBerlin(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
-// Helper to get a random available slot for testing
-async function getRandomAvailableSlot(): Promise<{ slotId: string; start: string; end: string } | null> {
-  const today = todayBerlin()
-  const res = await fetch(`${BASE}/api/appointments/slots?date=${today}&limit=20`)
+// Helper to get a random available slot for testing (default: today)
+async function getRandomAvailableSlot(
+  date?: string
+): Promise<{ slotId: string; start: string; end: string } | null> {
+  const d = date ?? todayBerlin()
+  const res = await fetch(`${BASE}/api/appointments/slots?date=${d}&limit=20`)
   if (!res.ok) return null
   const data = await res.json() as { slots: Array<{ slotId: string; start: string; end: string }> }
   if (data.slots.length === 0) return null
-  // Pick a random slot to avoid conflicts with other tests
   const randomIndex = Math.floor(Math.random() * data.slots.length)
   return data.slots[randomIndex]
+}
+
+// Tomorrow in Berlin (YYYY-MM-DD) so booked slots are never "in the past" for cancel tests
+function tomorrowBerlin(): string {
+  const t = new Date()
+  t.setDate(t.getDate() + 1)
+  return t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
 describe('Appointments API', () => {
@@ -139,4 +147,54 @@ describe('Appointments API', () => {
     })
     expect(res.status).toBe(404)
   })
+
+  it(
+    'cancel frees the slot so it appears in available slots again',
+    async () => {
+      const tomorrow = tomorrowBerlin()
+      const slot = await getRandomAvailableSlot(tomorrow)
+      if (!slot) {
+        console.warn('No available slots for tomorrow - skipping cancel-frees-slot test')
+        return
+      }
+
+      // Book the slot
+      const bookRes = await fetch(`${BASE}/api/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slotId: slot.slotId,
+          patientId: 'patient-1',
+        }),
+      })
+      if (bookRes.status !== 201) {
+        console.warn('Could not book slot (maybe taken) - skipping cancel-frees-slot test')
+        return
+      }
+      const bookData = (await bookRes.json()) as { appointment?: { id?: string } }
+      const appointmentId = bookData.appointment?.id
+      expect(appointmentId).toBeDefined()
+
+      // Cancel the appointment (should free the slot)
+      const cancelRes = await fetch(`${BASE}/api/appointments/cancel/${appointmentId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      expect(cancelRes.status).toBe(200)
+      const cancelData = (await cancelRes.json()) as { cancelled?: boolean }
+      expect(cancelData.cancelled).toBe(true)
+
+      // Slot should be available again (freed on cancel)
+      const slotsAfterCancel = await fetch(
+        `${BASE}/api/appointments/slots?date=${tomorrow}&limit=50`
+      )
+      const afterCancelData = (await slotsAfterCancel.json()) as {
+        slots: Array<{ slotId: string }>
+      }
+      const availableAfterCancel = afterCancelData.slots.some((s) => s.slotId === slot.slotId)
+      expect(availableAfterCancel).toBe(true)
+    },
+    { timeout: 15_000 }
+  )
 })
