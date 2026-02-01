@@ -1,14 +1,31 @@
 # ElevenLabs Test Cases
 
-> Generated from live Aidbox FHIR database at https://ignis.cognovis.de/fhir
+> Generated from live Aidbox FHIR database at https://ignis.cognovis.de/fhir  
+> Last verified: 2026-01-31 21:00 CET
 
 ## Database Summary
 
 | Resource | Count |
 |----------|-------|
-| Patients | 310 |
-| Practitioners | 136 |
-| Appointments | 2 |
+| Patients | 310+ |
+| Practitioners | 240 |
+| Appointments | 41 |
+| Slots | 560 |
+
+## Backend Endpoint Status
+
+All endpoints verified working:
+
+| Endpoint | Method | Status | Response |
+|----------|--------|--------|----------|
+| `/api/patients/lookup` | GET | OK | Returns found/patient/upcomingAppointment |
+| `/api/patients` | POST | OK | Creates/updates patient |
+| `/api/appointments/slots` | GET | OK | Returns available slots |
+| `/api/appointments` | POST | OK | Books appointment |
+| `/api/appointments/cancel/{id}` | POST | OK | Cancels appointment |
+| `/api/queue/urgent` | POST | OK | Adds to urgent queue |
+| `/api/queue/emergency` | POST | OK | Registers emergency |
+| `/api/callback` | POST | OK | Creates callback request |
 
 ---
 
@@ -466,4 +483,221 @@ Agent: "Thank you, Mr. Becker. I've noted your request. Our medical team will
 
 ---
 
-*Last updated: 2026-01-31*
+---
+
+## Additional Test Scenarios
+
+### Test 11: Reschedule Appointment (German)
+
+**Goal:** Verify cancel + rebook flow works
+
+**Script:**
+```
+You: "Guten Tag, ich möchte meinen Termin verschieben"
+
+Agent: "Guten Tag, hier ist Ignis Demo Praxis. Ich helfe Ihnen gerne dabei.
+        Dürfte ich Ihren Namen und Ihr Geburtsdatum haben?"
+
+You: "Hans Müller, 15.03.1985"
+
+[Agent calls patient_lookup → finds upcoming appointment]
+
+Agent: "Herr Müller, ich sehe Ihren Termin am [date]. 
+        Möchten Sie diesen auf einen anderen Tag verschieben?"
+
+You: "Ja, geht es nächste Woche Mittwoch?"
+
+[Agent calls cancel_appointment, then get_available_slots, then book_appointment]
+
+Agent: "Ich habe Ihren alten Termin storniert und einen neuen Termin 
+        am Mittwoch um [time] für Sie gebucht. Ist das in Ordnung?"
+```
+
+**Expected Tool Calls:**
+1. `patient_lookup` → found: true
+2. `cancel_appointment` → cancelled: true
+3. `get_available_slots` → list of slots
+4. `book_appointment` → appointment created
+
+---
+
+### Test 12: Language Switch Mid-Conversation
+
+**Goal:** Verify agent switches language when patient does
+
+**Script:**
+```
+You: "Guten Tag, ich brauche einen Termin"
+
+Agent: "Guten Tag, hier ist Ignis Demo Praxis..."
+
+You: "Actually, can we switch to English? My German is not so good."
+
+Agent: "Of course! No problem. May I have your name and date of birth?"
+
+You: "Maria Weber, August 22, 1972"
+
+[Agent continues in English for rest of call]
+```
+
+**Expected:** Agent should seamlessly switch to English
+
+---
+
+### Test 13: Insurance Question (German)
+
+**Goal:** Verify insurance routes to callback with correct category
+
+**Script:**
+```
+You: "Hallo, ich habe eine Frage zu meiner Versicherung"
+
+Agent: "Guten Tag. Für Versicherungsfragen werde ich veranlassen, dass unsere 
+        Mitarbeiter Sie zurückrufen. Dürfte ich Ihren Namen und Ihre 
+        Telefonnummer haben?"
+
+You: "Thomas Becker, 0172 5555555"
+
+[Agent calls request_callback with category="insurance"]
+
+Agent: "Ich habe Ihren Rückrufwunsch notiert. Unsere Mitarbeiter werden sich 
+        bei Ihnen melden."
+```
+
+**Expected Tool Calls:**
+1. `request_callback` with category="insurance"
+
+---
+
+### Test 14: Multiple Emergency Keywords
+
+**Goal:** Verify agent detects combined symptoms
+
+**Script:**
+```
+You: "Ich habe Brustschmerzen und kann nicht richtig atmen"
+
+[Agent IMMEDIATELY calls register_emergency_transfer with 
+ reason="Brustschmerzen, Atemnot"]
+
+Agent: "Ich höre, dass Sie Brustschmerzen und Atemnot haben. 
+        Das ist sehr ernst. Ich leite Sie sofort an unser medizinisches 
+        Personal weiter. Bitte bleiben Sie dran."
+```
+
+**Expected:** Immediate emergency detection and transfer
+
+---
+
+### Test 15: Wrong Patient Info Retry
+
+**Goal:** Verify agent handles patient not found gracefully
+
+**Script:**
+```
+You: "Guten Tag, ich bin Max Mustermann, geboren am 1. Januar 1980"
+
+[Agent calls patient_lookup → not found]
+
+Agent: "Ich kann Sie leider nicht in unserem System finden. 
+        Haben Sie Ihren Namen möglicherweise anders buchstabiert, 
+        oder haben Sie sich im Geburtsdatum geirrt?"
+
+You: "Oh sorry, Maria Weber, 22. August 1972"
+
+[Agent calls patient_lookup → found]
+
+Agent: "Ah, da sind Sie! Willkommen zurück, Frau Weber."
+```
+
+**Expected:** Agent should help patient correct their info
+
+---
+
+## Manual Test Instructions
+
+Since ElevenLabs simulation API uses generic user behavior, test manually via widget:
+
+### Test via ElevenLabs Widget
+
+1. Go to: https://elevenlabs.io/app/conversational-ai/agents
+2. Open agent: **Ignis Demo Praxis**
+3. Click **Test** button (phone icon)
+4. Speak or type the test scripts above
+5. Verify tool calls in the conversation log
+
+### Test via Twilio (if configured)
+
+Call the assigned phone number and follow the test scripts.
+
+---
+
+## Verified API Response Examples
+
+### patient_lookup (found)
+```json
+{
+  "patient": {...},
+  "found": true,
+  "patientId": "patient-2",
+  "patientName": "Frau Weber",
+  "upcomingAppointment": null
+}
+```
+
+### patient_lookup (not found)
+```json
+{
+  "patient": null,
+  "found": false
+}
+```
+
+### get_available_slots
+```json
+{
+  "slots": [
+    {"slotId": "stub-2026-02-01-0", "start": "2026-02-01T09:00:00+01:00", 
+     "end": "2026-02-01T09:30:00+01:00", "practitionerDisplay": "Dr. Anna Schmidt"},
+    {"slotId": "stub-2026-02-01-1", "start": "2026-02-01T09:30:00+01:00", ...}
+  ]
+}
+```
+
+### book_appointment
+```json
+{
+  "appointment": {"id": "...", "status": "booked", "start": "...", "end": "..."},
+  "confirmationMessage": "Ihre Termin wurde für ... bestätigt."
+}
+```
+
+### request_callback
+```json
+{
+  "callbackId": "uuid",
+  "estimatedTime": "within 2 hours",
+  "message": "Wir rufen Sie innerhalb von 2 Stunden zurück."
+}
+```
+
+### add_to_urgent_queue
+```json
+{
+  "queueEntryId": "uuid",
+  "position": 1,
+  "message": "Sie wurden in die dringende Warteschlange eingetragen. Wir rufen Sie zurück."
+}
+```
+
+### register_emergency_transfer
+```json
+{
+  "transferId": "uuid",
+  "message": "Notfall erfasst. Sie werden mit einem Mitarbeiter verbunden."
+}
+```
+
+---
+
+*Last updated: 2026-01-31 21:00 CET*

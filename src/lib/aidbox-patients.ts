@@ -100,7 +100,8 @@ export async function getUpcomingAppointment(patientId: string): Promise<{
 } | null> {
   try {
     const today = new Date().toISOString().slice(0, 10)
-    const path = `Appointment?participant=Patient/${patientId}&date=ge${today}&_sort=date&_count=1`
+    // Use 'patient' search parameter (not 'participant') for Aidbox compatibility
+    const path = `Appointment?patient=${patientId}&date=ge${today}&status=booked&_sort=date&_count=1`
     const bundle = (await fhirClient.get(path)) as AppointmentBundle
     const entry = bundle.entry?.[0]?.resource
     if (!entry?.id || !entry.start) return null

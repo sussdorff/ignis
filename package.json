@@ -9,21 +9,26 @@
     "build:frontend": "cd frontend && bun run build",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:legacy": "bun run scripts/test-routes.ts"
+    "test:legacy": "bun run scripts/test-routes.ts",
+    "test:agent": "bun run scripts/test-agent-simulation.ts",
+    "test:agent:all": "bun run scripts/test-agent-simulation.ts --all",
+    "test:backend": "bun run scripts/test-backend-integration.ts",
+    "test:voice": "bun run scripts/test-agent-voice.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hono/zod-validator": "^0.7.6",
+    "@types/node": "^25.1.0",
     "axios": "^1.13.4",
     "date-fns": "^4.1.0",
     "hono": "^4.11.7",
     "twilio": "^5.3.7",
-    "ws": "^8.18.0",
+    "ws": "^8.19.0",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/ws": "^8.5.13"
+    "@types/ws": "^8.18.1"
   }
 }
