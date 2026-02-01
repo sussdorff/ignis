@@ -182,7 +182,7 @@ flowchart TB
 ~/.bun/bin/bun install
 ```
 
-**Frontend** (Vite + React)
+**Frontend** (Next.js)
 ```bash
 cd frontend
 ~/.bun/bin/bun install
@@ -195,13 +195,17 @@ cd frontend
 ~/.bun/bin/bun run dev
 ```
 
-**Terminal 2 - Frontend** (port 5173)
+**Terminal 2 - Frontend** (port 3001 or 3002 if 3001 is in use)
 ```bash
 cd frontend
 ~/.bun/bin/bun run dev
 ```
 
-Open http://localhost:5173 in your browser.
+**Local environment (required for chat/API):**
+- **Backend:** Create `.env` in project root with `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` for the patient chat and voice features (see [ElevenLabs & Chat](#elevenlabs--chat) below).
+- **Frontend:** Create `frontend/.env.local` with `API_URL=http://localhost:3000` so the Next.js app proxies `/api/*` to the backend. Without this, the chat page will get 500s when creating sessions.
+
+Open http://localhost:3001 (or 3002) in your browser. Patient chat: http://localhost:3001/patient/chat
 
 ### Backend for ElevenLabs (Voice Team)
 
@@ -213,6 +217,23 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 | **Base URL (deployed)** | `https://ignis.cognovis.de` (or set `API_BASE_URL` in env) |
 | **OpenAPI spec** | `GET /api/openapi.json` — load this URL in ElevenLabs tools so the agent uses the correct request/response shapes. The spec’s `servers[0].url` is set from `API_BASE_URL` (default `http://localhost:3000/api`). |
 | **CORS** | Enabled for `/api/*`; cross-origin requests from the voice app are allowed. |
+
+### ElevenLabs & Chat
+
+The **patient chat** (`/patient/chat`) and **voice agent** (Twilio + ElevenLabs) both need ElevenLabs credentials. No extra services are required—only environment variables.
+
+| Context | What you need |
+|--------|----------------|
+| **Local dev (backend)** | `.env` in project root with `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID`. |
+| **Local dev (frontend)** | `frontend/.env.local` with `API_URL=http://localhost:3000` so `/api/*` is proxied to the backend. |
+| **Deployed (Docker Compose)** | Set `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` in the same `.env` used by `docker compose`. The `api` service already receives them; no extra configuration on the server. |
+
+**On the main site (deployed):** You do **not** need to install or run anything extra. Docker Compose passes these variables into the `api` container. Ensure the server’s `.env` (or the environment where you run `docker compose`) contains:
+
+- `ELEVENLABS_API_KEY` — from [ElevenLabs Profile / API Keys](https://elevenlabs.io/app/settings/api-keys)
+- `ELEVENLABS_AGENT_ID` — from the Conversational AI agent URL (e.g. `agent_xxxxx`)
+
+After setting them, restart the API: `docker compose up -d api` (or redeploy with `./infra/update-server.sh`). The frontend container already uses `API_URL=http://api:3001` in Docker, so chat and voice work without further setup. See [infra/README.md](infra/README.md) for full deployment and env reference.
 
 ## API Route Overview
 
@@ -275,9 +296,11 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 
 | Method | Path | Description | Status |
 |--------|------|-------------|--------|
-| `POST` | `/api/chat/start` | Start new chat session | ✅ Memory |
-| `POST` | `/api/chat/message` | Send message to AI | ✅ AI |
-| `GET` | `/api/chat/:sessionId` | Get chat session history | ✅ Memory |
+| `POST` | `/api/chat/session` | Create new chat session (body: `{}` or `{ patientId? }`) | ✅ ElevenLabs WebSocket |
+| `POST` | `/api/chat/message` | Send message (body: `{ sessionId, message }`) | ✅ ElevenLabs |
+| `GET` | `/api/chat/session/:id` | Get session history | ✅ Memory |
+| `DELETE` | `/api/chat/session/:id` | End session | ✅ Memory |
+| `GET` | `/api/chat/sessions` | List active sessions (non-production) | ✅ Memory |
 
 ### Doctor (`/api/doctor`)
 
@@ -368,6 +391,15 @@ This will:
 - Aidbox UI: http://localhost:8080 (admin/ignis2026)
 
 ## Deployment
+
+### Main site (production)
+
+On the server where you run Docker Compose, you **do not** need any extra services for ElevenLabs or the patient chat. Set in `.env` (or the environment used by `docker compose`):
+
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_AGENT_ID`
+
+The Compose file already passes these into the `api` service; the frontend uses `API_URL=http://api:3001` inside the stack. After changing env, restart: `docker compose up -d api` or run `./infra/update-server.sh`. See [infra/README.md](infra/README.md) for all env variables.
 
 ### Initial Setup (New Server)
 
