@@ -101,17 +101,17 @@ flowchart TB
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Frontend | Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui | Praxis dashboard + Patient portal |
-| Backend | Bun + Hono | Real-time APIs for ElevenLabs tools + frontend |
-| FHIR Server | Aidbox (Docker) | Patient/appointment/questionnaire data storage |
-| Voice AI | ElevenLabs Conversational AI | Phone conversation handling |
-| Phone | Twilio | Inbound/outbound calls, media streaming |
-| Background Agent | OpenClaw | Post-call tasks, notifications, follow-ups |
-| NLU | Gemini | Intent classification, confidence scoring |
-| Reverse Proxy | Nginx (Docker) | SSL termination, routing |
-| Database | PostgreSQL 16 (Docker) | Aidbox FHIR storage |
+| Layer | Technology | Purpose | Status |
+|-------|------------|---------|--------|
+| Frontend | Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui | Praxis dashboard + Patient portal | ✅ 70% |
+| Backend | Bun + Hono | Real-time APIs for ElevenLabs tools + frontend | ✅ 95% |
+| FHIR Server | Aidbox (Docker) | Patient/appointment/questionnaire data storage | ✅ 100% |
+| Voice AI | **ElevenLabs Conversational AI Agent "Lisa"** | **German/English phone conversation, 3-tier triage** | **✅ 95%** |
+| Phone | **Twilio → ElevenLabs** | **Inbound calls route to voice agent** | **✅ 100%** |
+| Background Agent | OpenClaw | Post-call tasks, notifications, follow-ups | ❌ Planned |
+| NLU | Gemini | Intent classification, confidence scoring | ❌ Planned |
+| Reverse Proxy | Nginx (Docker) | SSL termination, routing | ✅ 100% |
+| Database | PostgreSQL 16 (Docker) | Aidbox FHIR storage | ✅ 100% |
 
 ## Project Status
 
@@ -150,17 +150,21 @@ flowchart TB
 - ✅ Questionnaire forms and progress tracking
 - 🔄 Frontend-backend API wiring (partially complete)
 
-**Voice Integration (40% Complete):**
-- ✅ Twilio integration (routes, client, WebSocket)
-- 🔄 ElevenLabs integration (client exists, agent flow incomplete)
+**Voice Integration (95% Complete):**
+- ✅ Twilio phone number connected to ElevenLabs agent
+- ✅ ElevenLabs agent "Lisa" answering calls in German/English
+- ✅ All 9 voice tools configured and connected to backend APIs
+- ✅ System prompt v2.1 with emergency detection and 3-tier triage
+- ✅ Comprehensive test scenarios documented
+- 🔄 End-to-end flow testing in progress
 
 🔴 **Not Started** (Critical Missing Features — ~35%)
 
 **High Priority (P1):**
 - ❌ **Patient Verification Portal** ([ig-i1u](bd://ig-i1u)) - Token-based secure access for patient data review
 - ❌ **AI Flags System** ([ig-96p](bd://ig-96p)) - Confidence scoring and doctor review interface
-- ❌ **Emergency Detection** ([ig-f1z](bd://ig-f1z)) - Always-on interrupt during calls (safety-critical)
-- ❌ **ElevenLabs Voice Flow** ([ig-pfb](bd://ig-pfb)) - Complete 3-tier triage integration
+- ✅ **Emergency Detection** ([ig-f1z](bd://ig-f1z)) - Implemented in system prompt, testing required
+- 🔄 **ElevenLabs Voice Flow** ([ig-pfb](bd://ig-pfb)) - Tools configured, end-to-end testing needed
 - ❌ **Demo Materials** ([ig-6m1](bd://ig-6m1)) - Pitch deck, script, German seed data
 
 **Medium Priority (P2):**
@@ -292,6 +296,35 @@ The Bun backend exposes the API contract and endpoints used by the ElevenLabs Co
 | `POST` | `/api/voice/sessions/:id/end` | End voice session | ✅ ElevenLabs |
 | `POST` | `/api/voice/sessions/:id/transfer` | Transfer to human agent | ✅ ElevenLabs |
 | `GET` | `/api/voice/agents` | List available agents | ✅ ElevenLabs |
+
+### Voice Integration (Twilio + ElevenLabs)
+
+**Architecture:** Twilio phone number → ElevenLabs Conversational AI Agent → Backend APIs
+
+**Agent Details:**
+- **Name:** Lisa (Ignis Demo Praxis receptionist)
+- **Agent ID:** `agent_2001kgaacwnff529zfp0nmh4ppjq`
+- **Languages:** German (primary), English
+- **System Prompt:** v2.1 with emergency detection, 3-tier triage
+- **Voice Tools:** 9 tools configured and connected to backend
+
+**Configured Tools:**
+1. ✅ `patient_lookup` - Find patient by name/DOB
+2. ✅ `patient_create_or_update` - Register new patients
+3. ✅ `get_available_slots` - Find appointment times
+4. ✅ `book_appointment` - Create appointments
+5. ✅ `cancel_appointment` - Cancel appointments
+6. ✅ `add_to_urgent_queue` - Same-day urgent queue
+7. ✅ `register_emergency_transfer` - Emergency keyword detection
+8. ✅ `request_callback` - Out-of-scope requests
+9. ✅ `get_intake_questions` - Post-booking questionnaire
+
+**Test Data:** 310+ patients, 240 practitioners, 560 slots available
+
+**Documentation:**
+- System Prompt: [docs/elevenlabs-system-prompt.md](docs/elevenlabs-system-prompt.md)
+- Test Cases: [docs/elevenlabs-test-cases.md](docs/elevenlabs-test-cases.md)
+- Tool Configs: [elevenlabs/tools/](elevenlabs/tools/)
 
 ### Twilio Integration (`/api/twilio`)
 

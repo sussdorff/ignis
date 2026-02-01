@@ -7,21 +7,21 @@
 
 - [x] Initialize Bun project with Hono API and Next.js frontend with Tailwind and shadcn/ui
 - [x] Create Aidbox sandbox instance and configure FHIR resources (Patient, Appointment, Practitioner, Schedule)
-- [ ] Set up 11 Labs Conversational AI agent with patient intake conversation flow (German language primary) **[ig-pfb](bd://ig-pfb)**
+- [x] Set up ElevenLabs Conversational AI agent with patient intake conversation flow (German language primary) - **Agent "Lisa" live**
 - [x] Build Aidbox API client with Patient and Appointment CRUD operations
 - [x] Implement patient lookup by phone/DOB with pre-fill for returning patients
-- [ ] Build 3-tier triage logic (Emergency->human transfer, Urgent->same-day queue, Regular->standard booking) **[ig-pfb](bd://ig-pfb)**
-- [ ] Implement always-on emergency detection that can interrupt conversation at any point and transfer to human **[ig-f1z](bd://ig-f1z)**
+- [x] Build 3-tier triage logic (Emergency->human transfer, Urgent->same-day queue, Regular->standard booking) - **Implemented in system prompt v2.1**
+- [x] Implement always-on emergency detection that can interrupt conversation at any point and transfer to human - **Implemented in system prompt, needs testing**
 - [ ] Build patient verification portal with secure token-based access for reviewing/editing AI-filled data **[ig-i1u](bd://ig-i1u)**
 - [ ] Implement AI flagging system for uncertain/important fields that doctor should verify during appointment **[ig-96p](bd://ig-96p)**
 - [x] Create clinic dashboard with real-time patient queue, urgent queue, and appointment calendar
 - [x] Build patient intake form and appointment booking interface
-- [ ] Connect 11 Labs voice agent to backend APIs via webhooks **[ig-pfb](bd://ig-pfb)**
+- [x] Connect ElevenLabs voice agent to backend APIs - **All 9 tools configured and connected** - Testing: **[ig-el7](bd://ig-el7)**
 - [ ] Create realistic German demo seed data (Ärzte, schedules, sample patients) **[ig-6m1](bd://ig-6m1)**
 - [ ] Complete pitch deck with German/EU market focus, problem, solution, demo, and monetization **[ig-6m1](bd://ig-6m1)**
 - [ ] End-to-end demo rehearsal and backup video recording **[ig-6m1](bd://ig-6m1)**
 
-**Progress: ~65% Complete** | **Backend: 95%** | **Frontend: 70%** | **Voice: 40%** | **Demo: 5%**
+**Progress: ~75% Complete** | **Backend: 95%** | **Frontend: 70%** | **Voice: 95%** | **Demo: 5%**
 
 ---
 
@@ -71,12 +71,36 @@
 **High Priority (P1):**
 - ❌ Patient Verification Portal ([ig-i1u](bd://ig-i1u))
 - ❌ AI Flags System ([ig-96p](bd://ig-96p))
-- ❌ Emergency Detection ([ig-f1z](bd://ig-f1z)) - Safety-critical
-- ❌ ElevenLabs Voice Flow ([ig-pfb](bd://ig-pfb))
+- ✅ Emergency Detection ([ig-f1z](bd://ig-f1z)) - Implemented in system prompt, needs testing
+- 🔄 ElevenLabs Voice Flow ([ig-pfb](bd://ig-pfb)) - Tools configured, testing in progress ([ig-el7](bd://ig-el7))
 - ❌ Demo Materials ([ig-6m1](bd://ig-6m1))
 
 **Medium Priority (P2):**
 - ❌ OpenClaw Background Tasks ([ig-mnm](bd://ig-mnm))
+
+### ✅ Voice Integration Status (95% Complete)
+
+**Working:**
+- ✅ Twilio phone number connected to ElevenLabs
+- ✅ ElevenLabs agent "Lisa" created and live
+- ✅ Agent answers calls in German/English
+- ✅ All 9 tools configured in ElevenLabs dashboard
+- ✅ System prompt v2.1 with emergency detection and 3-tier triage
+- ✅ Backend APIs (95%) connected and responding
+- ✅ Test data: 310+ patients, 240 practitioners, 560 slots
+
+**Tools Configured:**
+1. `patient_lookup` - Find returning patients
+2. `patient_create_or_update` - Register new patients  
+3. `get_available_slots` - Find appointment times
+4. `book_appointment` - Create appointments
+5. `cancel_appointment` - Cancel/reschedule
+6. `add_to_urgent_queue` - Urgent same-day queue
+7. `register_emergency_transfer` - Emergency detection
+8. `request_callback` - Out-of-scope routing
+9. `get_intake_questions` - Post-booking questions
+
+**Testing:** End-to-end flow testing in progress (15 test scenarios documented)
 
 ---
 
