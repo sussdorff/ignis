@@ -6,9 +6,10 @@ import { AlertTriangle, Play, User, CheckCircle, Loader2, Clock } from "lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { 
-  getQueue, 
-  updateQueueEntry, 
+import { QuestionnaireStatusBadge } from "@/components/questionnaire-status-badge"
+import {
+  getQueue,
+  updateQueueEntry,
   finishQueueEntry as apiFinishQueueEntry,
   type QueueEntry,
   type QueueStatus as APIQueueStatus,
@@ -347,6 +348,11 @@ export function DashboardWaitingQueue() {
                   )}
                 </div>
               </button>
+
+              {/* Questionnaire status */}
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <QuestionnaireStatusBadge patientId={patient.patientId} compact />
+              </div>
 
               {/* Wait time */}
               <div className="w-14 text-center shrink-0">

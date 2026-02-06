@@ -5,10 +5,12 @@ import { Clock, Loader2, Calendar } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { QuestionnaireStatusBadge } from "@/components/questionnaire-status-badge"
 import { getTodayAppointments, type Appointment as APIAppointment } from "@/lib/api"
 
 interface DisplayAppointment {
   id: string
+  patientId: string
   patient: string
   initials: string
   time: string
@@ -36,6 +38,7 @@ function transformAppointment(appt: APIAppointment): DisplayAppointment {
   
   return {
     id: appt.id,
+    patientId: appt.patientId,
     patient: appt.patientName,
     initials: getInitials(appt.patientName),
     time: formatTime(appt.start),
@@ -164,18 +167,23 @@ export function UpcomingAppointments() {
                 <p className="text-xs text-muted-foreground">{appointment.type}</p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-sm font-medium">{appointment.time}</span>
-              <Badge
-                variant="secondary"
-                className={
-                  appointment.status === "bestaetigt"
-                    ? "bg-success/10 text-success border-0 text-xs"
-                    : "bg-warning/10 text-warning border-0 text-xs"
-                }
-              >
-                {appointment.status === "bestaetigt" ? "Bestätigt" : "Ausstehend"}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <div onClick={(e) => e.stopPropagation()}>
+                <QuestionnaireStatusBadge patientId={appointment.patientId} compact />
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-sm font-medium">{appointment.time}</span>
+                <Badge
+                  variant="secondary"
+                  className={
+                    appointment.status === "bestaetigt"
+                      ? "bg-success/10 text-success border-0 text-xs"
+                      : "bg-warning/10 text-warning border-0 text-xs"
+                  }
+                >
+                  {appointment.status === "bestaetigt" ? "Bestätigt" : "Ausstehend"}
+                </Badge>
+              </div>
             </div>
           </div>
         ))}

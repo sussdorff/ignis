@@ -18,13 +18,14 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { 
-  getQueue, 
-  updateQueueEntry, 
+import { QuestionnaireStatusBadge } from "@/components/questionnaire-status-badge"
+import {
+  getQueue,
+  updateQueueEntry,
   finishQueueEntry,
   type QueueEntry,
   type QueueStatus as APIQueueStatus,
-  type Priority as APIPriority 
+  type Priority as APIPriority
 } from "@/lib/api"
 
 type Priority = "notfall" | "dringend" | "normal"
@@ -289,11 +290,16 @@ export default function WartezimmerPage() {
         </div>
       </button>
 
+      {/* Questionnaire status */}
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <QuestionnaireStatusBadge patientId={patient.patientId} compact />
+      </div>
+
       {/* Wait time - prominent for waiting patients */}
       <div className="w-20 text-center shrink-0">
         {patient.status === "wartend" ? (
           <div className={`text-xl font-semibold ${
-            patient.waitTime > 30 ? "text-destructive" : 
+            patient.waitTime > 30 ? "text-destructive" :
             patient.waitTime > 15 ? "text-warning" : "text-foreground"
           }`}>
             {patient.waitTime}m

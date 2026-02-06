@@ -42,6 +42,14 @@ vi.mock('./questionnaire-response-modal', () => ({
     ) : null,
 }))
 
+// Mock tooltip to avoid Radix UI provider issues in test
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
 const fakePatients = [
   {
     id: 'p1',
