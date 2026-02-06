@@ -16,8 +16,35 @@ import {
   calculateTriageFromResponses,
   mockQuestionnaire,
 } from "@/lib/questionnaire-data"
-import { getPatientIntakeQuestionnaire } from "@/lib/api"
+import {
+  getPatientIntakeQuestionnaire,
+  submitQuestionnaireResponse,
+  type QuestionnaireResponseItem,
+} from "@/lib/api"
 import { type TriageAssessment } from "@/lib/appointments-store"
+
+/**
+ * Convert local QuestionnaireResponse[] to FHIR QuestionnaireResponse items
+ */
+export function convertResponsesToFHIRItems(
+  responses: QuestionnaireResponse[]
+): QuestionnaireResponseItem[] {
+  return responses.map((r) => {
+    const item: QuestionnaireResponseItem = { linkId: r.questionId }
+
+    if (typeof r.answer === "boolean") {
+      item.answer = [{ valueBoolean: r.answer }]
+    } else if (typeof r.answer === "number") {
+      item.answer = [{ valueInteger: r.answer }]
+    } else if (Array.isArray(r.answer)) {
+      item.answer = r.answer.map((code) => ({ valueCoding: { code } }))
+    } else {
+      item.answer = [{ valueString: r.answer }]
+    }
+
+    return item
+  })
+}
 
 export default function FragebogenPage() {
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireFlow | null>(null)
@@ -28,6 +55,36 @@ export default function FragebogenPage() {
   const [isComplete, setIsComplete] = useState(false)
   const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [appointmentBooked, setAppointmentBooked] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  // Submit responses to FHIR when questionnaire is completed
+  useEffect(() => {
+    if (!isComplete || responses.length === 0) return
+
+    async function submitResponses() {
+      setIsSubmitting(true)
+      setSubmitError(null)
+      try {
+        const fhirItems = convertResponsesToFHIRItems(responses)
+        await submitQuestionnaireResponse({
+          status: "completed",
+          item: fhirItems,
+          questionnaire: "Questionnaire/patient-intake-de",
+          authored: new Date().toISOString(),
+        })
+        setSubmitSuccess(true)
+      } catch (err) {
+        console.error("Failed to submit questionnaire response:", err)
+        setSubmitError("Antworten konnten nicht gespeichert werden.")
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+
+    submitResponses()
+  }, [isComplete, responses])
 
   // Fetch the questionnaire from the API
   useEffect(() => {
@@ -154,6 +211,9 @@ export default function FragebogenPage() {
     setResponses([])
     setIsComplete(false)
     setAppointmentBooked(false)
+    setIsSubmitting(false)
+    setSubmitError(null)
+    setSubmitSuccess(false)
   }
 
   const toggleVoiceMode = () => {
@@ -266,6 +326,24 @@ export default function FragebogenPage() {
               patientName={patientName}
               onBooked={() => setAppointmentBooked(true)}
             />
+
+            {/* Submission Status */}
+            {isSubmitting && (
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                <span>Antworten werden gespeichert...</span>
+              </div>
+            )}
+            {submitError && (
+              <div className="rounded-lg bg-destructive/10 p-4 text-center text-destructive text-sm">
+                {submitError}
+              </div>
+            )}
+            {submitSuccess && (
+              <div className="rounded-lg bg-green-500/10 p-4 text-center text-green-700 dark:text-green-400 text-sm">
+                Ihre Antworten wurden erfolgreich gespeichert.
+              </div>
+            )}
 
             {/* Response Summary */}
             {appointmentBooked && (

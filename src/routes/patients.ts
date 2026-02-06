@@ -8,6 +8,7 @@ import {
   type PatientCreateOrUpdateResponse,
 } from '../lib/schemas'
 import { findPatient, getPatientById, createOrUpdatePatient, getAllPatients, getUpcomingAppointment } from '../lib/aidbox-patients'
+import { createNote, getPatientNotes, updateNote } from '../lib/aidbox-notes'
 import type { FHIRPatient } from '../lib/schemas'
 
 const patients = new Hono()
@@ -155,8 +156,7 @@ patients.get('/:id/documents', async (c) => {
 })
 
 // =============================================================================
-// GET /api/patients/:id/notes - stub for patient notes
-// Returns empty notes array
+// GET /api/patients/:id/notes - list patient notes
 // =============================================================================
 patients.get('/:id/notes', async (c) => {
   const id = c.req.param('id')
@@ -164,8 +164,72 @@ patients.get('/:id/notes', async (c) => {
   if (!patient) {
     return c.json({ error: 'not_found' }, 404)
   }
-  // Stub: return empty notes array
-  return c.json({ notes: [] }, 200)
+  const notes = await getPatientNotes(id)
+  return c.json({ notes }, 200)
 })
+
+// =============================================================================
+// POST /api/patients/:id/notes - create a patient note
+// =============================================================================
+const CreateNoteSchema = z.object({
+  content: z.string().min(1, 'content is required'),
+  author: z.string().optional(),
+})
+
+patients.post(
+  '/:id/notes',
+  zValidator('json', CreateNoteSchema, (result, c) => {
+    if (!result.success) {
+      const message = result.error.issues.map((e) => e.message).join('; ')
+      return c.json({ error: 'validation_failed', message }, 400)
+    }
+  }),
+  async (c) => {
+    const id = c.req.param('id')
+    const patient = await getPatientById(id)
+    if (!patient) {
+      return c.json({ error: 'not_found' }, 404)
+    }
+    const { content, author } = c.req.valid('json')
+    const note = await createNote(id, content, author)
+    return c.json(note, 201)
+  }
+)
+
+// =============================================================================
+// PUT /api/patients/:id/notes/:noteId - update a patient note
+// =============================================================================
+const UpdateNoteSchema = z.object({
+  content: z.string().min(1, 'content is required'),
+})
+
+patients.put(
+  '/:id/notes/:noteId',
+  zValidator('json', UpdateNoteSchema, (result, c) => {
+    if (!result.success) {
+      const message = result.error.issues.map((e) => e.message).join('; ')
+      return c.json({ error: 'validation_failed', message }, 400)
+    }
+  }),
+  async (c) => {
+    const id = c.req.param('id')
+    const noteId = c.req.param('noteId')
+    const patient = await getPatientById(id)
+    if (!patient) {
+      return c.json({ error: 'not_found' }, 404)
+    }
+    const { content } = c.req.valid('json')
+    try {
+      const note = await updateNote(noteId, content)
+      return c.json(note, 200)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('not found') || message.includes('Not Found')) {
+        return c.json({ error: 'not_found' }, 404)
+      }
+      throw err
+    }
+  }
+)
 
 export default patients

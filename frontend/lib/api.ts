@@ -346,6 +346,44 @@ export async function getPatientNotes(patientId: string): Promise<PatientNote[]>
   return data.notes
 }
 
+/**
+ * Create a patient note
+ */
+export async function createPatientNote(
+  patientId: string,
+  content: string,
+  author?: string
+): Promise<PatientNote> {
+  const res = await fetch(`${API_BASE}/api/patients/${patientId}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, author }),
+  })
+  if (!res.ok) {
+    throw new Error(`Failed to create patient note: ${res.status}`)
+  }
+  return res.json()
+}
+
+/**
+ * Update a patient note
+ */
+export async function updatePatientNote(
+  patientId: string,
+  noteId: string,
+  content: string
+): Promise<PatientNote> {
+  const res = await fetch(`${API_BASE}/api/patients/${patientId}/notes/${noteId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) {
+    throw new Error(`Failed to update patient note: ${res.status}`)
+  }
+  return res.json()
+}
+
 // ============================================================================
 // Questionnaire Types (FHIR R4)
 // ============================================================================
@@ -436,4 +474,79 @@ export async function getPatientIntakeQuestionnaire(): Promise<FHIRQuestionnaire
     throw new Error(`Failed to fetch patient intake questionnaire: ${res.status}`)
   }
   return res.json()
+}
+
+// ============================================================================
+// QuestionnaireResponse Types & API
+// ============================================================================
+
+export interface QuestionnaireResponseAnswer {
+  valueString?: string
+  valueBoolean?: boolean
+  valueInteger?: number
+  valueCoding?: { code: string; display?: string; system?: string }
+}
+
+export interface QuestionnaireResponseItem {
+  linkId: string
+  text?: string
+  answer?: QuestionnaireResponseAnswer[]
+}
+
+export interface QuestionnaireResponseSubmitInput {
+  patientId?: string
+  status: 'in-progress' | 'completed' | 'amended' | 'entered-in-error' | 'stopped'
+  item: QuestionnaireResponseItem[]
+  questionnaire?: string
+  encounterId?: string
+  authored?: string
+  author?: string
+}
+
+/**
+ * Submit a questionnaire response to the FHIR backend
+ */
+export async function submitQuestionnaireResponse(
+  data: QuestionnaireResponseSubmitInput
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`${API_BASE}/api/questionnaires/responses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    throw new Error(`Failed to submit questionnaire response: ${res.status}`)
+  }
+  return res.json()
+}
+
+export interface FHIRQuestionnaireResponseItem {
+  linkId: string
+  text?: string
+  answer?: QuestionnaireResponseAnswer[]
+  item?: FHIRQuestionnaireResponseItem[]
+}
+
+export interface FHIRQuestionnaireResponse {
+  resourceType: 'QuestionnaireResponse'
+  id: string
+  questionnaire?: string
+  status: 'completed' | 'in-progress' | 'amended' | 'entered-in-error' | 'stopped'
+  subject?: { reference: string }
+  authored?: string
+  item?: FHIRQuestionnaireResponseItem[]
+}
+
+/**
+ * Get questionnaire responses for a patient
+ */
+export async function getQuestionnaireResponsesByPatient(
+  patientId: string
+): Promise<FHIRQuestionnaireResponse[]> {
+  const res = await fetch(`${API_BASE}/api/questionnaires/responses?patientId=${patientId}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch questionnaire responses: ${res.status}`)
+  }
+  const data = await res.json()
+  return data.responses
 }

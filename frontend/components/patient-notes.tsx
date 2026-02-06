@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { getPatientNotes, type PatientNote } from "@/lib/api"
+import { getPatientNotes, createPatientNote, updatePatientNote, type PatientNote } from "@/lib/api"
 
 interface PatientNotesProps {
   patientId: string
@@ -42,6 +42,8 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
   const [editValue, setEditValue] = useState("")
   const [newNoteValue, setNewNoteValue] = useState("")
   const [isAddingNote, setIsAddingNote] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const newNoteRef = useRef<HTMLTextAreaElement>(null)
 
@@ -61,7 +63,7 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
   useEffect(() => {
     fetchNotes()
   }, [fetchNotes])
-  
+
   const displayNotes = expanded ? notes : notes.slice(0, 2)
 
   // Auto-resize textarea
@@ -90,28 +92,39 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
     setEditValue(note.inhalt)
   }
 
-  const handleBlur = (noteId: string) => {
-    // Auto-save on blur (local only for now - would POST to API in production)
-    if (editValue.trim()) {
-      setNotes(prev => prev.map(n => 
-        n.id === noteId ? { ...n, inhalt: editValue } : n
-      ))
+  const handleBlur = async (noteId: string) => {
+    if (editValue.trim() && editValue !== notes.find(n => n.id === noteId)?.inhalt) {
+      setSaving(true)
+      setSaveError(null)
+      try {
+        await updatePatientNote(patientId, noteId, editValue)
+        setNotes(prev => prev.map(n =>
+          n.id === noteId ? { ...n, inhalt: editValue } : n
+        ))
+      } catch (err) {
+        console.error('Failed to update note:', err)
+        setSaveError('Fehler beim Speichern')
+      } finally {
+        setSaving(false)
+      }
     }
     setEditingId(null)
     setEditValue("")
   }
 
-  const handleNewNoteBlur = () => {
+  const handleNewNoteBlur = async () => {
     if (newNoteValue.trim()) {
-      // Auto-save new note (local only for now - would POST to API in production)
-      const newNote: DisplayNote = {
-        id: `new-${Date.now()}`,
-        inhalt: newNoteValue,
-        autor: "Arzt", // Would come from auth context
-        datum: new Date().toLocaleDateString('de-DE'),
-        uhrzeit: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+      setSaving(true)
+      setSaveError(null)
+      try {
+        const created = await createPatientNote(patientId, newNoteValue)
+        setNotes(prev => [transformNote(created), ...prev])
+      } catch (err) {
+        console.error('Failed to create note:', err)
+        setSaveError('Fehler beim Speichern')
+      } finally {
+        setSaving(false)
       }
-      setNotes(prev => [newNote, ...prev])
     }
     setNewNoteValue("")
     setIsAddingNote(false)
@@ -164,7 +177,7 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
         <CardContent>
           <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
             <p className="text-sm">{error}</p>
-            <button 
+            <button
               type="button"
               onClick={() => { setLoading(true); fetchNotes(); }}
               className="mt-2 text-xs text-primary hover:underline"
@@ -190,7 +203,7 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
                   {notes.length}
                 </Badge>
               </div>
-              <ChevronDown 
+              <ChevronDown
                 className={cn(
                   "size-4 text-muted-foreground transition-transform duration-200",
                   isOpen && "rotate-180"
@@ -199,9 +212,20 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent>
           <CardContent className="pt-0 space-y-3">
+            {/* Save status indicator */}
+            {saving && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                <span>Speichern...</span>
+              </div>
+            )}
+            {saveError && (
+              <div className="text-xs text-destructive">{saveError}</div>
+            )}
+
             {/* Quick add area - tap to start typing */}
             {isAddingNote ? (
               <div className="p-3 rounded-lg bg-primary/5 ring-2 ring-primary/20">
@@ -242,11 +266,11 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
 
             {/* Notes list - tap to edit */}
             {displayNotes.map((note) => (
-              <div 
+              <div
                 key={note.id}
                 className={`p-3 rounded-lg transition-colors cursor-text ${
-                  editingId === note.id 
-                    ? "bg-primary/5 ring-2 ring-primary/20" 
+                  editingId === note.id
+                    ? "bg-primary/5 ring-2 ring-primary/20"
                     : "bg-muted/50 hover:bg-muted/70"
                 }`}
                 onClick={() => !editingId && handleNoteClick(note)}
@@ -260,8 +284,8 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
                     <span>{note.uhrzeit}</span>
                   </div>
                   {note.aiGeneriert && (
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className="border-primary/30 text-primary bg-primary/5 gap-1 text-xs"
                     >
                       <Sparkles className="size-3" />
@@ -269,7 +293,7 @@ export function PatientNotes({ patientId, expanded }: PatientNotesProps) {
                     </Badge>
                   )}
                 </div>
-                
+
                 {editingId === note.id ? (
                   <textarea
                     ref={textareaRef}

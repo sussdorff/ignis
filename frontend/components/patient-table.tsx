@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { MoreHorizontal, Phone, FileText, Calendar, Loader2, Users } from "lucide-react"
+import { MoreHorizontal, Phone, FileText, Calendar, Loader2, Users, CheckCircle2, Clock, Minus } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -18,10 +18,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { getPatients, type FHIRPatient } from "@/lib/api"
+import { getPatients, getQuestionnaireResponsesByPatient, type FHIRPatient } from "@/lib/api"
+import { QuestionnaireResponseModal } from "./questionnaire-response-modal"
 
 interface Patient {
   id: string
@@ -65,11 +65,59 @@ function transformPatient(fhir: FHIRPatient): Patient {
   }
 }
 
+type QuestionnaireStatus = 'completed' | 'in-progress' | 'none' | 'loading'
+
+function QuestionnaireStatusBadge({
+  status,
+  onClick,
+}: {
+  status: QuestionnaireStatus
+  onClick: (e: React.MouseEvent) => void
+}) {
+  if (status === 'loading') {
+    return (
+      <span data-testid="status-loading" className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Loader2 className="size-3 animate-spin" />
+      </span>
+    )
+  }
+  if (status === 'completed') {
+    return (
+      <Badge
+        className="bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer border-transparent"
+        onClick={onClick}
+      >
+        <CheckCircle2 className="size-3" />
+        Ausgefuellt
+      </Badge>
+    )
+  }
+  if (status === 'in-progress') {
+    return (
+      <Badge
+        className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 cursor-pointer border-transparent"
+        onClick={onClick}
+      >
+        <Clock className="size-3" />
+        In Bearbeitung
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant="secondary" className="cursor-pointer" onClick={onClick}>
+      <Minus className="size-3" />
+      Ausstehend
+    </Badge>
+  )
+}
+
 export function PatientTable() {
   const router = useRouter()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [questionnaireStatuses, setQuestionnaireStatuses] = useState<Record<string, QuestionnaireStatus>>({})
+  const [modalPatientId, setModalPatientId] = useState<string | null>(null)
 
   const fetchPatients = useCallback(async () => {
     try {
@@ -87,6 +135,34 @@ export function PatientTable() {
   useEffect(() => {
     fetchPatients()
   }, [fetchPatients])
+
+  // Fetch questionnaire statuses independently after patients load
+  useEffect(() => {
+    if (patients.length === 0) return
+
+    // Initialize all to loading
+    const initialStatuses: Record<string, QuestionnaireStatus> = {}
+    for (const p of patients) {
+      initialStatuses[p.id] = 'loading'
+    }
+    setQuestionnaireStatuses(initialStatuses)
+
+    // Fetch each patient's status in parallel, updating as they resolve
+    for (const p of patients) {
+      getQuestionnaireResponsesByPatient(p.id)
+        .then((responses) => {
+          const hasCompleted = responses.some((r) => r.status === 'completed')
+          const hasInProgress = responses.some((r) => r.status === 'in-progress')
+          let status: QuestionnaireStatus = 'none'
+          if (hasCompleted) status = 'completed'
+          else if (hasInProgress) status = 'in-progress'
+          setQuestionnaireStatuses((prev) => ({ ...prev, [p.id]: status }))
+        })
+        .catch(() => {
+          setQuestionnaireStatuses((prev) => ({ ...prev, [p.id]: 'none' }))
+        })
+    }
+  }, [patients])
 
   const handlePatientClick = (patientId: string) => {
     router.push(`/patient/${patientId}`)
@@ -140,6 +216,7 @@ export function PatientTable() {
             <TableHead className="pl-4">Patient</TableHead>
             <TableHead>Geburtsdatum</TableHead>
             <TableHead>Geschlecht</TableHead>
+            <TableHead>Fragebogen</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>
@@ -165,6 +242,15 @@ export function PatientTable() {
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {patient.gender}
+              </TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <QuestionnaireStatusBadge
+                  status={questionnaireStatuses[patient.id] || 'loading'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setModalPatientId(patient.id)
+                  }}
+                />
               </TableCell>
               <TableCell>
                 <DropdownMenu>
@@ -199,6 +285,13 @@ export function PatientTable() {
           ))}
         </TableBody>
       </Table>
+      {modalPatientId && (
+        <QuestionnaireResponseModal
+          patientId={modalPatientId}
+          isOpen={true}
+          onClose={() => setModalPatientId(null)}
+        />
+      )}
     </div>
   )
 }
